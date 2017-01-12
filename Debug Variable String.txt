@@ -1,0 +1,1 @@
+{time_boot_ms}{roll}{pitch}{yaw}{rollspeed}{pitchspeed}{yawspeed}{lat}{lon}{alt}{relative_alt}{vx}{vy}{vz}{heading}{airspeed}{groundspeed}{verticalspeed}{press_abs}{press_diff}{temperature}{OP1}{OP2}{CO}
