@@ -1,14 +1,13 @@
 
 #include "libraries\checksum.h"
 #include "libraries\ardupilotmega\mavlink.h" // loads mavlink from common
-//#include "mavlink\pixhawk\pixhawk.h" // introduces many errors and slow build
 #include <ADC.h>
 #include <ADC_Module.h>
 #include <RingBuffer.h>
 #include <RingBufferDMA.h>
 #include <SD.h> //Load SD card library
 #include <SPI.h> //Load SPI Library
-
+//#include "mavlink\pixhawk\pixhawk.h" // introduces many errors and slow build
 
 // set this to the hardware serial port you wish to use
 #define APSERIAL Serial1 //Autopilot Port RX(pin0) TX(pin1) 
@@ -50,12 +49,13 @@ int temperature = 0;
 bool GCS_UNITS = 0; // 0 = meters, 1 = feet
 
 // CO Sensor Variables
-int PinLED = 13; // LED pin to allow flashing
+float CalibVal = 0.439; // Calibration value to convert from voltage into ppb, varies by sensor
 float OP1 = 0; // sensor output 1
 float OP2 = 0; // sensor output 2
 float CO = 0; // CO reading computed from OP1 & OP2
-float COMean = 0; // Recursively calculated mean for CO readings between SD writes
-const long SDWritePeriod = 100; // millisecond between SD card writes
+int CO_Count = 0; // number of CO samples
+float CO_Mean = 0; // Recursively calculated mean for CO readings between SD writes
+const long SD_Write_Period = 100; // millisecond between SD card writes
 
 // Raw GPS variables
 uint64_t mav_utime; /*< Timestamp (microseconds since UNIX epoch or microseconds since system boot)*/
@@ -78,6 +78,10 @@ int chipSelect = 4; //chipSelect pin for the SD card Reader
 File mySensorData; //Data object you will write your sesnor data to
 unsigned long lognum = 0;
 bool SD_Connected = 0;
+
+// Generic Variables
+int PinLED = 13; // LED pin to allow flashing
+
 
 void setup() {
 	// The setup code will run once
@@ -103,15 +107,15 @@ void setup() {
 							//adc->setReference(ADC_REF_1V2, ADC_0); // change all 3.3 to 1.2 if you change the reference to 1V2
 	adc->setAveraging(10); // set number of samples to be taken and averaged to give a reading
 	adc->setResolution(12); // set bits of resolution
-	adc->setConversionSpeed(ADC_MED_SPEED); // change the conversion speed it can be ADC_VERY_LOW_SPEED, ADC_LOW_SPEED, ADC_MED_SPEED, ADC_HIGH_SPEED or ADC_VERY_HIGH_SPEED
-	adc->setSamplingSpeed(ADC_MED_SPEED); // change the sampling speed
-	adc->setReference(ADC_REF_EXT); // set the external reference pin as the voltage reference
+	adc->setConversionSpeed(ADC_HIGH_SPEED_16BITS); // change the conversion speed it can be ADC_VERY_LOW_SPEED, ADC_LOW_SPEED, ADC_MED_SPEED, ADC_HIGH_SPEED or ADC_VERY_HIGH_SPEED
+	adc->setSamplingSpeed(ADC_VERY_LOW_SPEED); // change the sampling speed
+	adc->setReference(ADC_REF_3V3); // set the external reference pin as the voltage reference
 	// ADC1
 	adc->setAveraging(10, ADC_1); // set number of averages
 	adc->setResolution(12, ADC_1); // set bits of resolution
-	adc->setConversionSpeed(ADC_MED_SPEED, ADC_1); // change the conversion speed
-	adc->setSamplingSpeed(ADC_MED_SPEED, ADC_1); // change the sampling speed
-	adc->setReference(ADC_REF_EXT, ADC_1);
+	adc->setConversionSpeed(ADC_HIGH_SPEED_16BITS, ADC_1); // change the conversion speed
+	adc->setSamplingSpeed(ADC_VERY_LOW_SPEED, ADC_1); // change the sampling speed
+	adc->setReference(ADC_REF_3V3, ADC_1);
 
 	adc->startSynchronizedContinuous(OP1pin, OP2pin);
 	
@@ -137,39 +141,19 @@ void loop() {
 		send_message(&msg1); // send data request msg
 	}
 
-	// read sensor value - currently doesn't function as expected
-	Read_Sensor();
-
+	Read_Sensor(); // read sensor value and return recursive mean since last save
+	
 	if (currentMillis - PrevTelemTime >= TelemPeriod && PixSys_id>0) {
-		// save the last time you recorded an atmospheric measurement
-		PrevTelemTime = currentMillis;
-
-		//Send2Ground();
-		// Initialize the required buffers 
-		mavlink_message_t atm;
-		uint8_t buf[MAVLINK_MAX_PACKET_LEN];
-		// Pack the new message with our data attached
-		mavlink_msg_uom_atmospheric_data_pack(TeensySys_id, TeensyComponent_id, &atm,
-			roll, pitch, yaw, rollspeed, pitchspeed, yawspeed, time_boot_ms, lat, lon,
-			alt, relative_alt, vx, vy, vz, airspeed, groundspeed, heading, press_abs,
-			press_diff, temperature, OP1, OP2, CO);
-
-		digitalWrite(PinLED, !(digitalRead(PinLED))); // flash LED
-
-		// Copy the message to send buffer 
-		uint16_t len = mavlink_msg_to_send_buffer(buf, &atm);
-
-		// Send the uom_atmospheric_data_pack to the GCS through the telemetry module 
-		TELEMSERIAL.write(buf, len);
-
-
-
+		digitalWrite(PinLED, HIGH); // LED on
+		PrevTelemTime = currentMillis; // save the last time you recorded an atmospheric measurement
+		Send_Telem();
 		// Save the information sent to GCS in the mavlink packet on the SD card
 		if (SD_Connected) { //log the data only if the SD card is connected
-			SD_write();
-
+		SD_write();
 		}
-
+		CO_Count = 0;
+		CO_Mean = 0;
+		digitalWrite(PinLED, LOW); // LED off
 	}
 
 
@@ -334,7 +318,7 @@ void SD_write() {
 			", vx " + String(vx) + ", vy " + String(vy) + ", vz" + String(vz) + ", Heading " + String(heading) +
 			", Airspeed " + String(airspeed) + ", GroundSpeed " + String(groundspeed) + ", ClimbSpeed " + String(verticalspeed) +
 			", Press_Abs " + String(press_abs) + ", PressDiff " + String(press_diff) + ", Temperature " + String(temperature) +
-			", OP1 " + String(OP1) + ", OP2 " + String(OP2) + ", CO " + String(CO));
+			", OP1 " + String(OP1) + ", OP2 " + String(OP2) + ", CO " + String(CO_Mean));
 
 		mySensorData.close();                                  //close the file
 	}
@@ -350,11 +334,31 @@ void Read_Sensor() {
 
 	//ADC::Sync_result result = adc->analogSynchronizedRead(OP1pin, OP2pin);
 	//Modify the calibration value according to the sensor you are using
-	float CalibVal = 0.439; // Calibration value to convert from voltage into ppb, varies by sensor
+	
 	// calculate the (fraction of the Vin range) times (what that range represents in sensor V) divided by (calibration value)
 	OP1 = ((((float)result.result_adc0 / adc->getMaxValue(ADC_0)) * 5) / CalibVal); //Converting the raw bit value into ppb equivalent 
 	OP2 = ((((float)result.result_adc1 / adc->getMaxValue(ADC_1)) * 5) / CalibVal); //Converting the raw bit value into ppb equivalent
 
-	CO = OP1 - OP2; // Claculating the CO value in ppb
+	CO = OP1 - OP2; // Calculate the CO value in ppb
+	if (CO >= 0){ // error check CO value
+		++CO_Count;
+		CO_Mean = ((CO_Mean * CO_Count - 1) + CO) / CO_Count; // recursive mean of CO
+	}
+}
 
+void Send_Telem() {
+	//Send2Ground();
+	// Initialize the required buffers 
+	mavlink_message_t atm;
+	uint8_t buf[MAVLINK_MAX_PACKET_LEN];
+	// Pack the new message with our data attached
+	mavlink_msg_uom_atmospheric_data_pack(TeensySys_id, TeensyComponent_id, &atm,
+		roll, pitch, yaw, rollspeed, pitchspeed, yawspeed, time_boot_ms, lat, lon,
+		alt, relative_alt, vx, vy, vz, airspeed, groundspeed, heading, press_abs,
+		press_diff, temperature, OP1, OP2, CO_Mean);
+												  // Copy the message to send buffer 
+	uint16_t len = mavlink_msg_to_send_buffer(buf, &atm);
+
+	// Send the uom_atmospheric_data_pack to the GCS through the telemetry module 
+	TELEMSERIAL.write(buf, len);
 }
