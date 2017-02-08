@@ -16,8 +16,8 @@
 #define toDeg(x) ((x)*57.2957795131) // *180/pi 
 
 // ADC variables
-const int OP1pin = A1; //
-const int OP2pin = A20; //
+const int OP1pin = A2; //
+const int OP2pin = A3; //
 ADC *adc = new ADC();
 ADC::Sync_result result;
 
@@ -49,13 +49,13 @@ float press_diff = 0;
 int temperature = 0;
 bool GCS_UNITS = 0; // 0 = meters, 1 = feet
 
+// CO Sensor Variables
 int PinLED = 13; // LED pin to allow flashing
-
-					// Sensor variables
-float OP1 = 0;
-float OP2 = 0;
-float CO = 0;
-
+float OP1 = 0; // sensor output 1
+float OP2 = 0; // sensor output 2
+float CO = 0; // CO reading computed from OP1 & OP2
+float COMean = 0; // Recursively calculated mean for CO readings between SD writes
+const long SDWritePeriod = 100; // millisecond between SD card writes
 
 // Raw GPS variables
 uint64_t mav_utime; /*< Timestamp (microseconds since UNIX epoch or microseconds since system boot)*/
@@ -69,20 +69,20 @@ uint16_t cog; /*< Course over ground (NOT heading, but direction of movement) in
 uint8_t gpsfix; /*< 0-1: no fix, 2: 2D fix, 3: 3D fix, 4: DGPS, 5: RTK. Some applications will not use the value of this field unless it is at least two, so always correctly fill in the fix.*/
 uint8_t numSats; /*< Number of satellites visible. If unknown, set to 255*/
 
-unsigned long previousMillis = 0;        // will store last time atmospheric data packet was sent
-										 // constants won't change :
-const long intervaal = 250;           // interval at which to send new atmospheric data packet (milliseconds) >250 for continuous reliable op.
+// Telemetry variables
+unsigned long PrevTelemTime = 0;        // will store last time atmospheric data packet was sent
+const long TelemPeriod = 500;           // interval at which to send new atmospheric data packet (milliseconds) >250 for continuous reliable op.
 
+// SD Card variables
 int chipSelect = 4; //chipSelect pin for the SD card Reader
 File mySensorData; //Data object you will write your sesnor data to
-
 unsigned long lognum = 0;
 bool SD_Connected = 0;
 
 void setup() {
 	// The setup code will run once
 	pinMode(PinLED, OUTPUT); // set LED pin mode
-	digitalWrite(13, HIGH); // Light LED
+	digitalWrite(13, HIGH); // Light LED during setup
 
 	TELEMSERIAL.begin(57600);
 	APSERIAL.begin(57600);
@@ -91,9 +91,9 @@ void setup() {
 	SD_Connected = SD.begin(BUILTIN_SDCARD); //Initialize the SD card reader
 	lognum = millis();// can add a lastlog file on sd card to keep track if needed
 
-					  // ADC Setup
+	// ADC Setup
 
-					  // ADC0
+	// ADC0
 	pinMode(OP1pin, INPUT); // configuring OP1pin as input
 	pinMode(OP2pin, INPUT); // configuring OP2pin as input
 							// Initializing serial ports
@@ -106,7 +106,7 @@ void setup() {
 	adc->setConversionSpeed(ADC_MED_SPEED); // change the conversion speed it can be ADC_VERY_LOW_SPEED, ADC_LOW_SPEED, ADC_MED_SPEED, ADC_HIGH_SPEED or ADC_VERY_HIGH_SPEED
 	adc->setSamplingSpeed(ADC_MED_SPEED); // change the sampling speed
 	adc->setReference(ADC_REF_EXT); // set the external reference pin as the voltage reference
-									// ADC1 //
+	// ADC1
 	adc->setAveraging(10, ADC_1); // set number of averages
 	adc->setResolution(12, ADC_1); // set bits of resolution
 	adc->setConversionSpeed(ADC_MED_SPEED, ADC_1); // change the conversion speed
@@ -115,7 +115,7 @@ void setup() {
 
 	adc->startSynchronizedContinuous(OP1pin, OP2pin);
 	
-	digitalWrite(13, LOW); // turn off LED
+	digitalWrite(13, LOW); // turn off LED after setup completes
 }
 
 
@@ -140,16 +140,16 @@ void loop() {
 	// read sensor value - currently doesn't function as expected
 	Read_Sensor();
 
-	if (currentMillis - previousMillis >= intervaal && PixSys_id>0) {
+	if (currentMillis - PrevTelemTime >= TelemPeriod && PixSys_id>0) {
 		// save the last time you recorded an atmospheric measurement
-		previousMillis = currentMillis;
+		PrevTelemTime = currentMillis;
 
 		//Send2Ground();
 		// Initialize the required buffers 
 		mavlink_message_t atm;
 		uint8_t buf[MAVLINK_MAX_PACKET_LEN];
 		// Pack the new message with our data attached
-		mavlink_msg_uom_atmospheric_data_pack(PixSys_id, PixComponent_id, &atm,
+		mavlink_msg_uom_atmospheric_data_pack(TeensySys_id, TeensyComponent_id, &atm,
 			roll, pitch, yaw, rollspeed, pitchspeed, yawspeed, time_boot_ms, lat, lon,
 			alt, relative_alt, vx, vy, vz, airspeed, groundspeed, heading, press_abs,
 			press_diff, temperature, OP1, OP2, CO);
@@ -341,7 +341,7 @@ void SD_write() {
 }
 
 void Read_Sensor() {
-
+	// result = adc->analogSynchronizedRead(OP1pin, OP2pin); // should be this line? why was it changed?
 	result = adc->readSynchronizedContinuous();
 	// if using 16 bits and single-ended is necessary to typecast to unsigned,
 	// otherwise values larger than 3.3/2 will be interpreted as negative
@@ -350,7 +350,8 @@ void Read_Sensor() {
 
 	//ADC::Sync_result result = adc->analogSynchronizedRead(OP1pin, OP2pin);
 	//Modify the calibration value according to the sensor you are using
-	float CalibVal = 0.439; //Calibration value to convert from voltage into ppb
+	float CalibVal = 0.439; // Calibration value to convert from voltage into ppb, varies by sensor
+	// calculate the (fraction of the Vin range) times (what that range represents in sensor V) divided by (calibration value)
 	OP1 = ((((float)result.result_adc0 / adc->getMaxValue(ADC_0)) * 5) / CalibVal); //Converting the raw bit value into ppb equivalent 
 	OP2 = ((((float)result.result_adc1 / adc->getMaxValue(ADC_1)) * 5) / CalibVal); //Converting the raw bit value into ppb equivalent
 
