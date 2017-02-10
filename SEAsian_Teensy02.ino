@@ -15,16 +15,16 @@
 #define toDeg(x) ((x)*57.2957795131) // *180/pi 
 
 // ADC variables
-const int OP1pin = A2; //
-const int OP2pin = A3; //
+const int OP1pin = A2; // sensor pin 1 for sync read
+const int OP2pin = A3; // sensor pin 2 for sync read
 ADC *adc = new ADC();
 ADC::Sync_result result;
 
 // Autopilot variables
-int PixSys_id = 1;
-int PixComponent_id = 1;
-int TeensySys_id = 127;
-int TeensyComponent_id = 1;
+int PixSys_id = 1;  // system ID for Autopilot - internal to pass messages from Teensy to AP, do not change this for mutliple systems transmitting to ground
+int PixComponent_id = 1; // Component ID for Autopilot - internal to pass messages from Teensy to AP, do not change this for mutliple systems transmitting to ground
+int TeensySys_id = 127; // System ID for Teensy - change this for mutliple systems transmitting to ground
+int TeensyComponent_id = 1; // Component ID for Teensy - change this for mutliple systems transmitting to ground
 float roll = 0;
 float pitch = 0;
 float yaw = 0;
@@ -49,12 +49,12 @@ int temperature = 0;
 bool GCS_UNITS = 0; // 0 = meters, 1 = feet
 
 // CO Sensor Variables
-float CalibVal = 0.439; // Calibration value to convert from voltage into ppb, varies by sensor
+float COCalibVal = 0.439; // Calibration value to convert from voltage into ppb, varies by sensor
 float OP1 = 0; // sensor output 1
 float OP2 = 0; // sensor output 2
 float CO = 0; // CO reading computed from OP1 & OP2
-int CO_Count = 0; // number of CO samples
-float CO_Mean = 0; // Recursively calculated mean for CO readings between SD writes
+int CO_Count = 0; // number of CO samples (not accessible globally? so passed to sensor erading function)
+float CO_Mean = 0; // Recursively calculated mean for CO readings between SD writes (not accessible globally? so passed to sensor erading function)
 const long SD_Write_Period = 100; // millisecond between SD card writes
 
 // Raw GPS variables
@@ -78,6 +78,7 @@ int chipSelect = 4; //chipSelect pin for the SD card Reader
 File mySensorData; //Data object you will write your sesnor data to
 unsigned long lognum = 0;
 bool SD_Connected = 0;
+String LogFileName;
 
 // Generic Variables
 int PinLED = 13; // LED pin to allow flashing
@@ -91,38 +92,14 @@ void setup() {
 	TELEMSERIAL.begin(57600);
 	APSERIAL.begin(57600);
 
-	pinMode(10, OUTPUT); //Must declare pin10 as an output and reserve it
-	SD_Connected = SD.begin(BUILTIN_SDCARD); //Initialize the SD card reader
+	SD_Initialize();
+		
 	lognum = millis();// can add a lastlog file on sd card to keep track if needed
 
-	// ADC Setup
-
-	// ADC0
-	pinMode(OP1pin, INPUT); // configuring OP1pin as input
-	pinMode(OP2pin, INPUT); // configuring OP2pin as input
-							// Initializing serial ports
-							//Serial.begin(9600);
-							///// ADC0 ////
-							// reference can be ADC_REF_3V3, ADC_REF_1V2 (not for Teensy LC) or ADC_REF_EXT.
-							//adc->setReference(ADC_REF_1V2, ADC_0); // change all 3.3 to 1.2 if you change the reference to 1V2
-	adc->setAveraging(10); // set number of samples to be taken and averaged to give a reading
-	adc->setResolution(12); // set bits of resolution
-	adc->setConversionSpeed(ADC_HIGH_SPEED_16BITS); // change the conversion speed it can be ADC_VERY_LOW_SPEED, ADC_LOW_SPEED, ADC_MED_SPEED, ADC_HIGH_SPEED or ADC_VERY_HIGH_SPEED
-	adc->setSamplingSpeed(ADC_VERY_LOW_SPEED); // change the sampling speed
-	adc->setReference(ADC_REF_3V3); // set the external reference pin as the voltage reference
-	// ADC1
-	adc->setAveraging(10, ADC_1); // set number of averages
-	adc->setResolution(12, ADC_1); // set bits of resolution
-	adc->setConversionSpeed(ADC_HIGH_SPEED_16BITS, ADC_1); // change the conversion speed
-	adc->setSamplingSpeed(ADC_VERY_LOW_SPEED, ADC_1); // change the sampling speed
-	adc->setReference(ADC_REF_3V3, ADC_1);
-
-	adc->startSynchronizedContinuous(OP1pin, OP2pin);
+	ADC_Setup();
 	
 	digitalWrite(13, LOW); // turn off LED after setup completes
 }
-
-
 
 void loop() {
 	// put your main code here, to run repeatedly:  
@@ -133,7 +110,6 @@ void loop() {
 
 	mavlink_message_t msg1;
 
-
 	if (APSERIAL.available() > 0) {
 		// Send request for data
 		receive_msg(); // receive msg first to identify AP
@@ -141,7 +117,7 @@ void loop() {
 		send_message(&msg1); // send data request msg
 	}
 
-	Read_Sensor(); // read sensor value and return recursive mean since last save
+	Read_Sensor(CO_Count, CO_Mean, CO_Count, CO_Mean); // read sensor value and return recursive mean since last save
 	
 	if (currentMillis - PrevTelemTime >= TelemPeriod && PixSys_id>0) {
 		digitalWrite(PinLED, HIGH); // LED on
@@ -309,22 +285,22 @@ void handleMessage(mavlink_message_t* msg) //handle the messages and decode to v
 
 void SD_write() {
 	//Serial.println("Writing to SD");
-	mySensorData = SD.open("Log.txt", FILE_WRITE);
+	// mySensorData = SD.open("Log.txt", FILE_WRITE);
+	char __LogFileName[sizeof(LogFileName)];
+	LogFileName.toCharArray(__LogFileName, sizeof(__LogFileName));
+	mySensorData = SD.open(__LogFileName, FILE_WRITE);
 	if (mySensorData) {
 
-		mySensorData.println("Time_boot_ms " + String(time_boot_ms) + ", Roll " + String(roll) + ", Pitch " + String(pitch) + ", Yaw " + String(yaw) + ", RollSpeed " + String(rollspeed)
-			+ ", PitchSpeed " + String(pitchspeed) + ", YawSpeed" + String(yawspeed) +
-			", Lat " + String(lat) + ", Lon " + String(lon) + ", Alt " + String(alt) + ", RelativeAlt " + String(relative_alt) +
-			", vx " + String(vx) + ", vy " + String(vy) + ", vz" + String(vz) + ", Heading " + String(heading) +
-			", Airspeed " + String(airspeed) + ", GroundSpeed " + String(groundspeed) + ", ClimbSpeed " + String(verticalspeed) +
-			", Press_Abs " + String(press_abs) + ", PressDiff " + String(press_diff) + ", Temperature " + String(temperature) +
-			", OP1 " + String(OP1) + ", OP2 " + String(OP2) + ", CO " + String(CO_Mean));
+		mySensorData.println(String(time_boot_ms) + "," + String(roll) + "," + String(pitch) + "," + String(yaw) + "," + String(rollspeed)
+			+ "," + String(pitchspeed) + "," + String(yawspeed) + "," + String(lat) + "," + String(lon) + "," + String(alt) + "," + String(relative_alt)
+			+ "," + String(vx) + "," + String(vy) + "," + String(vz) + "," + String(heading) + "," + String(airspeed) + "," + String(groundspeed) + "," + String(verticalspeed)
+			+ "," + String(press_abs) + "," + String(press_diff) + "," + String(temperature) + "," + String(OP1) + "," + String(OP2) + "," + String(CO_Mean));
 
-		mySensorData.close();                                  //close the file
+		mySensorData.close(); //close the file
 	}
 }
 
-void Read_Sensor() {
+void Read_Sensor(int, float, int &CO_Count, float &CO_Mean) {
 	// result = adc->analogSynchronizedRead(OP1pin, OP2pin); // should be this line? why was it changed?
 	result = adc->readSynchronizedContinuous();
 	// if using 16 bits and single-ended is necessary to typecast to unsigned,
@@ -336,14 +312,20 @@ void Read_Sensor() {
 	//Modify the calibration value according to the sensor you are using
 	
 	// calculate the (fraction of the Vin range) times (what that range represents in sensor V) divided by (calibration value)
-	OP1 = ((((float)result.result_adc0 / adc->getMaxValue(ADC_0)) * 5) / CalibVal); //Converting the raw bit value into ppb equivalent 
-	OP2 = ((((float)result.result_adc1 / adc->getMaxValue(ADC_1)) * 5) / CalibVal); //Converting the raw bit value into ppb equivalent
+	OP1 = ((((float)result.result_adc0 / adc->getMaxValue(ADC_0)) * 5) / COCalibVal); //Converting the raw bit value into ppb equivalent 
+	OP2 = ((((float)result.result_adc1 / adc->getMaxValue(ADC_1)) * 5) / COCalibVal); //Converting the raw bit value into ppb equivalent
 
 	CO = OP1 - OP2; // Calculate the CO value in ppb
+	CO = abs(CO); // absolute value in case of sensor wire swap, may disguise error readings
+	
 	if (CO >= 0){ // error check CO value
 		++CO_Count;
-		CO_Mean = ((CO_Mean * CO_Count - 1) + CO) / CO_Count; // recursive mean of CO
+		CO_Mean = ((CO_Mean * (CO_Count - 1)) + CO) / CO_Count; // recursive mean of CO
 	}
+	else {
+		CO_Mean = -1; // error value
+	}
+	
 }
 
 void Send_Telem() {
@@ -361,4 +343,58 @@ void Send_Telem() {
 
 	// Send the uom_atmospheric_data_pack to the GCS through the telemetry module 
 	TELEMSERIAL.write(buf, len);
+}
+
+void SD_Initialize() {
+	pinMode(10, OUTPUT); //Must declare pin10 as an output and reserve it
+	SD_Connected = SD.begin(BUILTIN_SDCARD); //Initialize the SD card reader
+	// create filename, open file, write headers
+	int i = 1;
+	bool FileExists = 1;
+	while (FileExists) {
+		if (i < 10) {
+			LogFileName = String("Log0") + String(i) + String(".csv");
+		}
+		else {
+			LogFileName = String("Log") + String(i) + String(".csv");
+		}
+		char __LogFileName[sizeof(LogFileName)];
+		LogFileName.toCharArray(__LogFileName, sizeof(__LogFileName));
+		FileExists = SD.exists(__LogFileName);
+		++i;
+	}
+	// write file headers
+	char __LogFileName[sizeof(LogFileName)];
+	LogFileName.toCharArray(__LogFileName, sizeof(__LogFileName));
+	mySensorData = SD.open(__LogFileName, FILE_WRITE);
+	if (mySensorData) {
+		mySensorData.println("Time_boot_ms,Roll,Pitch,Yaw,RollSpeed,PitchSpeed,YawSpeed,Lat,Lon,Alt,RelativeAlt,vx,vy,vz,Heading,Airspeed,GroundSpeed,ClimbSpeed,Press_Abs,PressDiff,Temperature,OP1,OP2,CO");
+		mySensorData.close(); //close the file
+	}
+}
+
+void ADC_Setup() {
+	// ADC Setup
+
+	// ADC0
+	pinMode(OP1pin, INPUT); // configuring OP1pin as input
+	pinMode(OP2pin, INPUT); // configuring OP2pin as input
+							// Initializing serial ports
+							//Serial.begin(9600);
+							///// ADC0 ////
+							// reference can be ADC_REF_3V3, ADC_REF_1V2 (not for Teensy LC) or ADC_REF_EXT.
+							//adc->setReference(ADC_REF_1V2, ADC_0); // change all 3.3 to 1.2 if you change the reference to 1V2
+	adc->setAveraging(10); // set number of samples to be taken and averaged to give a reading
+	adc->setResolution(12); // set bits of resolution
+	adc->setConversionSpeed(ADC_HIGH_SPEED_16BITS); // change the conversion speed it can be ADC_VERY_LOW_SPEED, ADC_LOW_SPEED, ADC_MED_SPEED, ADC_HIGH_SPEED or ADC_VERY_HIGH_SPEED
+	adc->setSamplingSpeed(ADC_VERY_LOW_SPEED); // change the sampling speed
+	adc->setReference(ADC_REF_3V3); // set the external reference pin as the voltage reference
+									// ADC1
+	adc->setAveraging(10, ADC_1); // set number of averages
+	adc->setResolution(12, ADC_1); // set bits of resolution
+	adc->setConversionSpeed(ADC_HIGH_SPEED_16BITS, ADC_1); // change the conversion speed
+	adc->setSamplingSpeed(ADC_VERY_LOW_SPEED, ADC_1); // change the sampling speed
+	adc->setReference(ADC_REF_3V3, ADC_1);
+
+	adc->startSynchronizedContinuous(OP1pin, OP2pin);
 }
