@@ -49,7 +49,9 @@ int temperature = 0;
 bool GCS_UNITS = 0; // 0 = meters, 1 = feet
 
 // CO Sensor Variables
-float COCalibVal = 0.439; // Calibration value to convert from voltage into ppb, varies by sensor
+float COCalibVal = 0.439; // Multiplication factor for sensor from data sheet
+float COOffsetVal = 0.280; // zero offset value for sensor in mV, from data sheet (?)
+
 float OP1 = 0; // sensor output 1
 float OP2 = 0; // sensor output 2
 float CO = 0; // CO reading computed from OP1 & OP2
@@ -312,11 +314,12 @@ void Read_Sensor(int, float, int &CO_Count, float &CO_Mean) {
 	//Modify the calibration value according to the sensor you are using
 	
 	// calculate the (fraction of the Vin range) times (what that range represents in sensor V) divided by (calibration value)
-	OP1 = ((((float)result.result_adc0 / adc->getMaxValue(ADC_0)) * 5) / COCalibVal); //Converting the raw bit value into ppb equivalent 
-	OP2 = ((((float)result.result_adc1 / adc->getMaxValue(ADC_1)) * 5) / COCalibVal); //Converting the raw bit value into ppb equivalent
-
-	CO = OP1 - OP2; // Calculate the CO value in ppb
-	CO = abs(CO); // absolute value in case of sensor wire swap, may disguise error readings
+	
+	OP1 = (((float)result.result_adc0 / adc->getMaxValue(ADC_0)) * 5) * 1000; //Converting the voltage reading into fraction of sensor range in mV
+	OP2 = (((float)result.result_adc1 / adc->getMaxValue(ADC_1)) * 5) * 1000; //Converting the voltage reading into fraction of sensor range in mV
+	CO = OP1 - OP2; // Calculate corrected sensor voltage
+	CO = (CO - COOffsetVal) / COCalibVal;
+	// CO = abs(CO); // absolute value in case of sensor wire swap, may disguise error readings
 	
 	if (CO >= 0){ // error check CO value
 		++CO_Count;
@@ -374,9 +377,7 @@ void SD_Initialize() {
 }
 
 void ADC_Setup() {
-	// ADC Setup
-
-	// ADC0
+// ADC0
 	pinMode(OP1pin, INPUT); // configuring OP1pin as input
 	pinMode(OP2pin, INPUT); // configuring OP2pin as input
 							// Initializing serial ports
@@ -389,7 +390,7 @@ void ADC_Setup() {
 	adc->setConversionSpeed(ADC_HIGH_SPEED_16BITS); // change the conversion speed it can be ADC_VERY_LOW_SPEED, ADC_LOW_SPEED, ADC_MED_SPEED, ADC_HIGH_SPEED or ADC_VERY_HIGH_SPEED
 	adc->setSamplingSpeed(ADC_VERY_LOW_SPEED); // change the sampling speed
 	adc->setReference(ADC_REF_3V3); // set the external reference pin as the voltage reference
-									// ADC1
+// ADC1
 	adc->setAveraging(10, ADC_1); // set number of averages
 	adc->setResolution(12, ADC_1); // set bits of resolution
 	adc->setConversionSpeed(ADC_HIGH_SPEED_16BITS, ADC_1); // change the conversion speed
