@@ -93,12 +93,16 @@ void setup() {
 
 	TELEMSERIAL.begin(57600);
 	APSERIAL.begin(57600);
+	
+	AutoPilot_Setup();
 
 	SD_Initialize();
 		
 	lognum = millis();// can add a lastlog file on sd card to keep track if needed
 
 	ADC_Setup();
+
+	
 	
 	digitalWrite(13, LOW); // turn off LED after setup completes
 }
@@ -110,14 +114,7 @@ void loop() {
 	int outgoingByte;
 	unsigned long currentMillis = millis();
 
-	mavlink_message_t msg1;
-
-	if (APSERIAL.available() > 0) {
-		// Send request for data
-		receive_msg(); // receive msg first to identify AP
-		mavlink_msg_request_data_stream_pack(TeensySys_id, TeensyComponent_id, &msg1, PixSys_id, PixComponent_id, MAV_DATA_STREAM_ALL, 20, 1); // build data request msg
-		send_message(&msg1); // send data request msg
-	}
+	receive_msg();
 
 	Read_Sensor(CO_Count, CO_Mean, CO_Count, CO_Mean); // read sensor value and return recursive mean since last save
 	
@@ -201,7 +198,7 @@ void handleMessage(mavlink_message_t* msg) //handle the messages and decode to v
 	}
 	case MAVLINK_MSG_ID_GPS_RAW_INT:
 	{
-		//Serial.println("Received: MAVLINK_MSG_ID_GPS_RAW_INT");
+		// Serial.println("Received: MAVLINK_MSG_ID_GPS_RAW_INT");
 		// decode
 		mavlink_gps_raw_int_t packet;
 		mavlink_msg_gps_raw_int_decode(msg, &packet);
@@ -213,7 +210,7 @@ void handleMessage(mavlink_message_t* msg) //handle the messages and decode to v
 	}
 	case MAVLINK_MSG_ID_GLOBAL_POSITION_INT:
 	{
-		//Serial.println("Received: MAVLINK_MSG_ID_GLOBAL_POSITION_INT");
+		// Serial.println("Received: MAVLINK_MSG_ID_GLOBAL_POSITION_INT");
 		// decode
 		mavlink_global_position_int_t packet;
 		mavlink_msg_global_position_int_decode(msg, &packet);
@@ -231,7 +228,7 @@ void handleMessage(mavlink_message_t* msg) //handle the messages and decode to v
 	}
 	case MAVLINK_MSG_ID_GPS_STATUS:
 	{
-		//Serial.println("Received: MAVLINK_MSG_ID_GPS_STATUS");
+		Serial.println("Received: MAVLINK_MSG_ID_GPS_STATUS");
 		mavlink_gps_status_t packet;
 		mavlink_msg_gps_status_decode(msg, &packet);
 		break;
@@ -319,7 +316,6 @@ void Read_Sensor(int, float, int &CO_Count, float &CO_Mean) {
 	OP2 = (((float)result.result_adc1 / adc->getMaxValue(ADC_1)) * 5) * 1000; //Converting the voltage reading into fraction of sensor range in mV
 	CO = OP1 - OP2; // Calculate corrected sensor voltage
 	CO = (CO - COOffsetVal) / COCalibVal;
-	// CO = abs(CO); // absolute value in case of sensor wire swap, may disguise error readings
 	
 	if (CO >= 0){ // error check CO value
 		++CO_Count;
@@ -398,4 +394,26 @@ void ADC_Setup() {
 	adc->setReference(ADC_REF_3V3, ADC_1);
 
 	adc->startSynchronizedContinuous(OP1pin, OP2pin);
+}
+
+void AutoPilot_Setup() {
+	mavlink_message_t msg1;
+
+	Serial.println("Searching for Auto Pilot....");
+	while (APSERIAL.available() == 0)
+	{
+	}
+	Serial.println("Auto Pilot found");
+
+	if (APSERIAL.available() > 0) {
+		// Send request for data
+		receive_msg(); // receive msg first to identify AP
+		mavlink_msg_request_data_stream_pack(TeensySys_id, TeensyComponent_id, &msg1, PixSys_id, PixComponent_id, MAV_DATA_STREAM_ALL, 20, 1); // build data request msg
+		send_message(&msg1); // send data request msg
+	}
+	Serial.println("Auto Pilot intializing....");
+	while (lat == 0){
+		receive_msg();
+	}
+	Serial.println("Auto Pilot online");
 }

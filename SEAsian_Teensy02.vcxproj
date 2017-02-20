@@ -95,7 +95,7 @@
   </ImportGroup>
   <ProjectExtensions>
     <VisualStudio>
-      <UserProperties arduino.build.auto_discover_includes="0" arduino.upload.port="COM19" />
+      <UserProperties arduino.build.auto_discover_includes="0" VM.DebugVariablesWindow.ColumnVisibleVariableTimeStamp="0" arduino.upload.port="COM19" />
     </VisualStudio>
   </ProjectExtensions>
 </Project>

@@ -1,3 +1,7 @@
+Ver03
+minor code tidying
+Proper conversion from sensor Voltage in to ppb using zero offset and multiplier value from the sensor calibration certificate.
+
 ver02
 Various code tidying
 SD Card setup moved to function
