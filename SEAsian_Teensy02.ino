@@ -118,16 +118,21 @@ void loop() {
 	Read_Sensor(CO_Count, CO_Mean, CO_Count, CO_Mean); // read sensor value and return recursive mean since last save
 	
 	if (currentMillis - PrevTelemTime >= TelemPeriod && PixSys_id>0) {
-		digitalWrite(PinLED, HIGH); // LED on
-		PrevTelemTime = currentMillis; // save the last time you recorded an atmospheric measurement
-		Send_Telem();
+			digitalWrite(PinLED, HIGH); // LED on
+			PrevTelemTime = currentMillis; // save the last time you recorded an atmospheric measurement
+			Send_Telem();
+			digitalWrite(PinLED, LOW); // LED on
+			delay(50);
+		
 		// Save the information sent to GCS in the mavlink packet on the SD card
 		if (SD_Connected) { //log the data only if the SD card is connected
-		SD_write();
+			digitalWrite(PinLED, HIGH); // LED on
+			SD_write();
+			digitalWrite(PinLED, LOW); // LED off
 		}
 		CO_Count = 0;
 		CO_Mean = 0;
-		digitalWrite(PinLED, LOW); // LED off
+
 	}
 
 

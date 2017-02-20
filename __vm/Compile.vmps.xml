@@ -9,24 +9,24 @@
       <VCCodeMacros />
     </VCCodeModel>
     <BreakPoints>
-      <BreakPoint Index="1" Name="SEAsian_Teensy02.ino, line 296" Id="e0abc531-922f-4271-abeb-03dedeb7bd82" Enabled="1" Message="{TeensySys_id}{TeensyComponent_id}{time_boot_ms}{(long)(mav_utime)}{roll}{pitch}{yaw}{rollspeed}{pitchspeed}{yawspeed}{lat}{lon}{alt}{relative_alt}{vx}{vy}{vz}{heading}{airspeed}{groundspeed}{verticalspeed}{press_abs}{press_diff}{temperature}{OP1}{OP2}{CO}" MessageTextType="2" PreProcessedMessage="{0}{1}{2}{3}{4}{5}{6}{7}{8}{9}{10}{11}{12}{13}{14}{15}{16}{17}{18}{19}{20}{21}{22}{23}{24}{25}{26}" Condition="" ConditionType="1" CurrentHits="0" File="c:\users\hyder\documents\qsync\arduino\seasian_teensy02\seasian_teensy02.ino" FileLine="296" FileColumn="1" FunctionName="SD_write()" FunctionLineOffset="13" FunctionColumnOffset="1" HitCountTarget="1" HitCountType="1" Language="C++" LocationType="3" Tag="&lt;vmbp Id='e0abc531-922f-4271-abeb-03dedeb7bd82'/&gt;" Type="1" ToString="System.__ComObject" BreakWhenHit="0">
-        <Source>289		mySensorData = SD.open(__LogFileName, FILE_WRITE);
-290		if (mySensorData) {
-291	
-292			mySensorData.println(String(time_boot_ms) + "," + String(roll) + "," + String(pitch) + "," + String(yaw) + "," + String(rollspeed)
-293				+ "," + String(pitchspeed) + "," + String(yawspeed) + "," + String(lat) + "," + String(lon) + "," + String(alt) + "," + String(relative_alt)
-294				+ "," + String(vx) + "," + String(vy) + "," + String(vz) + "," + String(heading) + "," + String(airspeed) + "," + String(groundspeed) + "," + String(verticalspeed)
-295				+ "," + String(press_abs) + "," + String(press_diff) + "," + String(temperature) + "," + String(OP1) + "," + String(OP2) + "," + String(CO_Mean));
---&gt;296	
-297			mySensorData.close(); //close the file
-298		}
-299	}
-300	
-301	void Read_Sensor(int, float, int &amp;CO_Count, float &amp;CO_Mean) {
-302		// result = adc-&gt;analogSynchronizedRead(OP1pin, OP2pin); // should be this line? why was it changed?
-303		result = adc-&gt;readSynchronizedContinuous();
-304		// if using 16 bits and single-ended is necessary to typecast to unsigned,
-305		// otherwise values larger than 3.3/2 will be interpreted as negative
+      <BreakPoint Index="1" Name="SEAsian_Teensy02.ino, line 346" Id="fe6e78db-0f00-490a-b4db-39de89ed0ed4" Enabled="1" Message="{TeensySys_id}{TeensyComponent_id}{time_boot_ms}{(long)(mav_utime)}{roll}{pitch}{yaw}{rollspeed}{pitchspeed}{yawspeed}{lat}{lon}{alt}{relative_alt}{vx}{vy}{vz}{heading}{airspeed}{groundspeed}{verticalspeed}{press_abs}{press_diff}{temperature}{OP1}{OP2}{CO}" MessageTextType="2" PreProcessedMessage="{0}{1}{2}{3}{4}{5}{6}{7}{8}{9}{10}{11}{12}{13}{14}{15}{16}{17}{18}{19}{20}{21}{22}{23}{24}{25}{26}" Condition="" ConditionType="1" CurrentHits="0" File="c:\users\hyder\documents\qsync\arduino\seasian_teensy02\seasian_teensy02.ino" FileLine="346" FileColumn="1" FunctionName="Send_Telem()" FunctionLineOffset="13" FunctionColumnOffset="1" HitCountTarget="1" HitCountType="1" Language="C++" LocationType="3" Tag="&lt;vmbp Id='fe6e78db-0f00-490a-b4db-39de89ed0ed4'/&gt;" Type="1" ToString="System.__ComObject" BreakWhenHit="0">
+        <Source>339		// Pack the new message with our data attached
+340		mavlink_msg_uom_atmospheric_data_pack(TeensySys_id, TeensyComponent_id, &amp;atm,
+341			roll, pitch, yaw, rollspeed, pitchspeed, yawspeed, time_boot_ms, lat, lon,
+342			alt, relative_alt, vx, vy, vz, airspeed, groundspeed, heading, press_abs,
+343			press_diff, temperature, OP1, OP2, CO_Mean);
+344													  // Copy the message to send buffer 
+345		uint16_t len = mavlink_msg_to_send_buffer(buf, &amp;atm);
+--&gt;346	
+347		// Send the uom_atmospheric_data_pack to the GCS through the telemetry module 
+348		TELEMSERIAL.write(buf, len);
+349	}
+350	
+351	void SD_Initialize() {
+352		pinMode(10, OUTPUT); //Must declare pin10 as an output and reserve it
+353		SD_Connected = SD.begin(BUILTIN_SDCARD); //Initialize the SD card reader
+354		// create filename, open file, write headers
+355		int i = 1;
 </Source>
         <MessageVariables>
           <MessageVariable Name="TeensySys_id" Index="1" />
@@ -58,24 +58,24 @@
           <MessageVariable Name="CO" Index="27" />
         </MessageVariables>
       </BreakPoint>
-      <BreakPoint Index="2" Name="SEAsian_Teensy02.ino, line 341" Id="fe6e78db-0f00-490a-b4db-39de89ed0ed4" Enabled="1" Message="{TeensySys_id}{TeensyComponent_id}{time_boot_ms}{(long)(mav_utime)}{roll}{pitch}{yaw}{rollspeed}{pitchspeed}{yawspeed}{lat}{lon}{alt}{relative_alt}{vx}{vy}{vz}{heading}{airspeed}{groundspeed}{verticalspeed}{press_abs}{press_diff}{temperature}{OP1}{OP2}{CO}" MessageTextType="2" PreProcessedMessage="{0}{1}{2}{3}{4}{5}{6}{7}{8}{9}{10}{11}{12}{13}{14}{15}{16}{17}{18}{19}{20}{21}{22}{23}{24}{25}{26}" Condition="" ConditionType="1" CurrentHits="0" File="c:\users\hyder\documents\qsync\arduino\seasian_teensy02\seasian_teensy02.ino" FileLine="341" FileColumn="1" FunctionName="Send_Telem()" FunctionLineOffset="13" FunctionColumnOffset="1" HitCountTarget="1" HitCountType="1" Language="C++" LocationType="3" Tag="&lt;vmbp Id='fe6e78db-0f00-490a-b4db-39de89ed0ed4'/&gt;" Type="1" ToString="System.__ComObject" BreakWhenHit="0">
-        <Source>334		// Pack the new message with our data attached
-335		mavlink_msg_uom_atmospheric_data_pack(TeensySys_id, TeensyComponent_id, &amp;atm,
-336			roll, pitch, yaw, rollspeed, pitchspeed, yawspeed, time_boot_ms, lat, lon,
-337			alt, relative_alt, vx, vy, vz, airspeed, groundspeed, heading, press_abs,
-338			press_diff, temperature, OP1, OP2, CO_Mean);
-339													  // Copy the message to send buffer 
-340		uint16_t len = mavlink_msg_to_send_buffer(buf, &amp;atm);
---&gt;341	
-342		// Send the uom_atmospheric_data_pack to the GCS through the telemetry module 
-343		TELEMSERIAL.write(buf, len);
-344	}
-345	
-346	void SD_Initialize() {
-347		pinMode(10, OUTPUT); //Must declare pin10 as an output and reserve it
-348		SD_Connected = SD.begin(BUILTIN_SDCARD); //Initialize the SD card reader
-349		// create filename, open file, write headers
-350		int i = 1;
+      <BreakPoint Index="2" Name="SEAsian_Teensy02.ino, line 296" Id="260c5023-9b17-48d0-8454-c1a56887d28e" Enabled="1" Message="{TeensySys_id}{TeensyComponent_id}{time_boot_ms}{(long)(mav_utime)}{roll}{pitch}{yaw}{rollspeed}{pitchspeed}{yawspeed}{lat}{lon}{alt}{relative_alt}{vx}{vy}{vz}{heading}{airspeed}{groundspeed}{verticalspeed}{press_abs}{press_diff}{temperature}{OP1}{OP2}{CO}" MessageTextType="2" PreProcessedMessage="{0}{1}{2}{3}{4}{5}{6}{7}{8}{9}{10}{11}{12}{13}{14}{15}{16}{17}{18}{19}{20}{21}{22}{23}{24}{25}{26}" Condition="" ConditionType="1" CurrentHits="0" File="c:\users\hyder\documents\qsync\arduino\seasian_teensy02\seasian_teensy02.ino" FileLine="296" FileColumn="1" FunctionName="SD_write()" FunctionLineOffset="7" FunctionColumnOffset="1" HitCountTarget="1" HitCountType="1" Language="C++" LocationType="3" Tag="&lt;vmbp Id='260c5023-9b17-48d0-8454-c1a56887d28e'/&gt;" Type="1" ToString="System.__ComObject" BreakWhenHit="0">
+        <Source>289	void SD_write() {
+290		//Serial.println("Writing to SD");
+291		// mySensorData = SD.open("Log.txt", FILE_WRITE);
+292		char __LogFileName[sizeof(LogFileName)];
+293		LogFileName.toCharArray(__LogFileName, sizeof(__LogFileName));
+294		mySensorData = SD.open(__LogFileName, FILE_WRITE);
+295		if (mySensorData) {
+--&gt;296	
+297			mySensorData.println(String(time_boot_ms) + "," + String(roll) + "," + String(pitch) + "," + String(yaw) + "," + String(rollspeed)
+298				+ "," + String(pitchspeed) + "," + String(yawspeed) + "," + String(lat) + "," + String(lon) + "," + String(alt) + "," + String(relative_alt)
+299				+ "," + String(vx) + "," + String(vy) + "," + String(vz) + "," + String(heading) + "," + String(airspeed) + "," + String(groundspeed) + "," + String(verticalspeed)
+300				+ "," + String(press_abs) + "," + String(press_diff) + "," + String(temperature) + "," + String(OP1) + "," + String(OP2) + "," + String(CO_Mean));
+301	
+302			mySensorData.close(); //close the file
+303		}
+304	}
+305	
 </Source>
         <MessageVariables>
           <MessageVariable Name="TeensySys_id" Index="1" />
