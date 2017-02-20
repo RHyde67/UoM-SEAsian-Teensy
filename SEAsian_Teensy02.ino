@@ -7,7 +7,6 @@
 #include <RingBufferDMA.h>
 #include <SD.h> //Load SD card library
 #include <SPI.h> //Load SPI Library
-//#include "mavlink\pixhawk\pixhawk.h" // introduces many errors and slow build
 
 // set this to the hardware serial port you wish to use
 #define APSERIAL Serial1 //Autopilot Port RX(pin0) TX(pin1) 
@@ -402,6 +401,10 @@ void AutoPilot_Setup() {
 	Serial.println("Searching for Auto Pilot....");
 	while (APSERIAL.available() == 0)
 	{
+		digitalWrite(LED_BUILTIN, HIGH);
+		delay(20);
+			digitalWrite(LED_BUILTIN, LOW);
+		delay(50);
 	}
 	Serial.println("Auto Pilot found");
 
@@ -414,6 +417,11 @@ void AutoPilot_Setup() {
 	Serial.println("Auto Pilot intializing....");
 	while (lat == 0){
 		receive_msg();
+		digitalWrite(LED_BUILTIN, HIGH);
+		delay(100);
+		digitalWrite(LED_BUILTIN, LOW);
+		delay(100);
 	}
 	Serial.println("Auto Pilot online");
+	digitalWrite(LED_BUILTIN, HIGH);
 }

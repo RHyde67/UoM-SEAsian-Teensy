@@ -1,6 +1,16 @@
 Ver03
 minor code tidying
 Proper conversion from sensor Voltage in to ppb using zero offset and multiplier value from the sensor calibration certificate.
+Moved Mavlink message request and added error checking for Autopilot during set up. This is now a separate function. To prevent SD card writes before AP is initialized and sending data, during setup the system checks for the AP with the following LED flashes and Serial.println messages:
+1. Setup, LED on steady
+2. AP setup, searching for AP, very fast blink, serial print 'Searching for Auto Pilot....'
+3. serial print 'Auto Pilot found'
+3. Sends mavlink message request
+4. receives message and checks for Lat not equal to zero, fast blink, serial print 'Auto Pilot intializing....'
+5. Serial print 'Auto Pilot online'
+6. LED returns to steady on, setup continues
+
+
 
 ver02
 Various code tidying
