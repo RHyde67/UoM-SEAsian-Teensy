@@ -7,6 +7,7 @@
 #include <RingBufferDMA.h>
 #include <SD.h> //Load SD card library
 #include <SPI.h> //Load SPI Library
+//#include "mavlink\pixhawk\pixhawk.h" // introduces many errors and slow build
 
 // set this to the hardware serial port you wish to use
 #define APSERIAL Serial1 //Autopilot Port RX(pin0) TX(pin1) 
@@ -70,6 +71,9 @@ uint16_t cog; /*< Course over ground (NOT heading, but direction of movement) in
 uint8_t gpsfix; /*< 0-1: no fix, 2: 2D fix, 3: 3D fix, 4: DGPS, 5: RTK. Some applications will not use the value of this field unless it is at least two, so always correctly fill in the fix.*/
 uint8_t numSats; /*< Number of satellites visible. If unknown, set to 255*/
 
+uint64_t Time_UTC;
+uint32_t Time_Last_Baseline; /*< Time since boot of last baseline message received in ms.*/
+
 // Telemetry variables
 unsigned long PrevTelemTime = 0;        // will store last time atmospheric data packet was sent
 const long TelemPeriod = 500;           // interval at which to send new atmospheric data packet (milliseconds) >250 for continuous reliable op.
@@ -100,8 +104,6 @@ void setup() {
 	lognum = millis();// can add a lastlog file on sd card to keep track if needed
 
 	ADC_Setup();
-
-	
 	
 	digitalWrite(13, LOW); // turn off LED after setup completes
 }
@@ -169,6 +171,7 @@ void receive_msg()
 
 void handleMessage(mavlink_message_t* msg) //handle the messages and decode to variables
 {
+	//Serial.println(msg->msgid);
 
 	switch (msg->msgid) {
 	case MAVLINK_MSG_ID_HEARTBEAT:
@@ -188,7 +191,6 @@ void handleMessage(mavlink_message_t* msg) //handle the messages and decode to v
 	case MAVLINK_MSG_ID_ATTITUDE:
 	{
 		//Serial.println("Received: MAVLINK_MSG_ID_ATTITUDE");
-		// decode
 		mavlink_attitude_t packet;
 		mavlink_msg_attitude_decode(msg, &packet);
 		pitch = toDeg(packet.pitch);
@@ -202,8 +204,7 @@ void handleMessage(mavlink_message_t* msg) //handle the messages and decode to v
 	}
 	case MAVLINK_MSG_ID_GPS_RAW_INT:
 	{
-		// Serial.println("Received: MAVLINK_MSG_ID_GPS_RAW_INT");
-		// decode
+		//Serial.println("Received: MAVLINK_MSG_ID_GPS_RAW_INT");
 		mavlink_gps_raw_int_t packet;
 		mavlink_msg_gps_raw_int_decode(msg, &packet);
 		gpsfix = packet.fix_type;
@@ -214,8 +215,7 @@ void handleMessage(mavlink_message_t* msg) //handle the messages and decode to v
 	}
 	case MAVLINK_MSG_ID_GLOBAL_POSITION_INT:
 	{
-		// Serial.println("Received: MAVLINK_MSG_ID_GLOBAL_POSITION_INT");
-		// decode
+		//Serial.println("Received: MAVLINK_MSG_ID_GLOBAL_POSITION_INT");
 		mavlink_global_position_int_t packet;
 		mavlink_msg_global_position_int_decode(msg, &packet);
 		lat = packet.lat;
@@ -232,7 +232,7 @@ void handleMessage(mavlink_message_t* msg) //handle the messages and decode to v
 	}
 	case MAVLINK_MSG_ID_GPS_STATUS:
 	{
-		Serial.println("Received: MAVLINK_MSG_ID_GPS_STATUS");
+		//Serial.println("Received: MAVLINK_MSG_ID_GPS_STATUS");
 		mavlink_gps_status_t packet;
 		mavlink_msg_gps_status_decode(msg, &packet);
 		break;
@@ -256,7 +256,6 @@ void handleMessage(mavlink_message_t* msg) //handle the messages and decode to v
 	case MAVLINK_MSG_ID_RAW_PRESSURE:
 	{
 		//Serial.println("Received: MAVLINK_MSG_ID_RAW_PRESSURE");
-		// decode
 		mavlink_raw_pressure_t packet;
 		mavlink_msg_raw_pressure_decode(msg, &packet);
 		break;
@@ -282,8 +281,23 @@ void handleMessage(mavlink_message_t* msg) //handle the messages and decode to v
 		//vbat = packet.voltage_battery;
 		break;
 	}
+
+	case MAVLINK_MSG_ID_SYSTEM_TIME:
+	{
+		Serial.println("Received:MAVLINK_MSG_ID_SYSTEM_TIME");
+		mavlink_system_time_t packet;
+		Time_UTC = packet.time_unix_usec;
+		break;
 	}
 
+	case MAVLINK_MSG_ID_GPS_RTK:
+	{
+		Serial.println("Received:MAVLINK_MSG_ID_GPS_RTK");
+		mavlink_gps_rtk_t packet;
+		Time_Last_Baseline = packet.time_last_baseline_ms; /*< Time since boot of last baseline message received in ms.*/
+		break;
+	}
+	}
 }
 
 void SD_write() {
