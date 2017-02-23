@@ -7,7 +7,7 @@
 #include <RingBufferDMA.h>
 #include <SD.h> //Load SD card library
 #include <SPI.h> //Load SPI Library
-//#include "mavlink\pixhawk\pixhawk.h" // introduces many errors and slow build
+#include <Time.h>
 
 // set this to the hardware serial port you wish to use
 #define APSERIAL Serial1 //Autopilot Port RX(pin0) TX(pin1) 
@@ -70,9 +70,8 @@ uint16_t grndvelraw; /*< GPS ground speed (m/s * 100). If unknown, set to: UINT1
 uint16_t cog; /*< Course over ground (NOT heading, but direction of movement) in degrees * 100, 0.0..359.99 degrees. If unknown, set to: UINT16_MAX*/
 uint8_t gpsfix; /*< 0-1: no fix, 2: 2D fix, 3: 3D fix, 4: DGPS, 5: RTK. Some applications will not use the value of this field unless it is at least two, so always correctly fill in the fix.*/
 uint8_t numSats; /*< Number of satellites visible. If unknown, set to 255*/
-
-uint64_t Time_UTC;
-uint32_t Time_Last_Baseline; /*< Time since boot of last baseline message received in ms.*/
+uint64_t Time_Unix; // Raw time since Unix Epoch value in ms
+time_t Time_UTC; // converted from Time_Unix GPS unix epoch number
 
 // Telemetry variables
 unsigned long PrevTelemTime = 0;        // will store last time atmospheric data packet was sent
@@ -83,7 +82,12 @@ int chipSelect = 4; //chipSelect pin for the SD card Reader
 File mySensorData; //Data object you will write your sesnor data to
 unsigned long lognum = 0;
 bool SD_Connected = 0;
-String LogFileName;
+//String LogFileName;
+char LogFileName[32];
+char GPSDateStamp[10];
+char GPSTimeStamp[8];
+
+// String Year;
 
 // Generic Variables
 int PinLED = 13; // LED pin to allow flashing
@@ -284,17 +288,12 @@ void handleMessage(mavlink_message_t* msg) //handle the messages and decode to v
 
 	case MAVLINK_MSG_ID_SYSTEM_TIME:
 	{
-		Serial.println("Received:MAVLINK_MSG_ID_SYSTEM_TIME");
+		//Serial.println("Received:MAVLINK_MSG_ID_SYSTEM_TIME");
 		mavlink_system_time_t packet;
-		Time_UTC = packet.time_unix_usec;
-		break;
-	}
-
-	case MAVLINK_MSG_ID_GPS_RTK:
-	{
-		Serial.println("Received:MAVLINK_MSG_ID_GPS_RTK");
-		mavlink_gps_rtk_t packet;
-		Time_Last_Baseline = packet.time_last_baseline_ms; /*< Time since boot of last baseline message received in ms.*/
+		mavlink_msg_system_time_decode(msg, &packet);
+		Time_Unix = packet.time_unix_usec;
+		Time_UTC = Time_Unix/1000000;
+		
 		break;
 	}
 	}
@@ -302,13 +301,15 @@ void handleMessage(mavlink_message_t* msg) //handle the messages and decode to v
 
 void SD_write() {
 	//Serial.println("Writing to SD");
-	// mySensorData = SD.open("Log.txt", FILE_WRITE);
-	char __LogFileName[sizeof(LogFileName)];
-	LogFileName.toCharArray(__LogFileName, sizeof(__LogFileName));
-	mySensorData = SD.open(__LogFileName, FILE_WRITE);
+	sprintf(GPSTimeStamp, "%.2i-%.2i-%.2i", hour(Time_UTC), minute(Time_UTC), second(Time_UTC));
+	//Serial.println(GPSTimeStamp);
+	sprintf(GPSDateStamp, "%.2i-%.2i-%.2i", year(Time_UTC), month(Time_UTC), day(Time_UTC));
+	//Serial.println(GPSDateStamp);
+	//Serial.println(LogFileName);
+	mySensorData = SD.open(LogFileName, FILE_WRITE);
 	if (mySensorData) {
 
-		mySensorData.println(String(time_boot_ms) + "," + String(roll) + "," + String(pitch) + "," + String(yaw) + "," + String(rollspeed)
+		mySensorData.println(String(GPSDateStamp) + "," + String(GPSTimeStamp) + "," + String(time_boot_ms) + "," + String(roll) + "," + String(pitch) + "," + String(yaw) + "," + String(rollspeed)
 			+ "," + String(pitchspeed) + "," + String(yawspeed) + "," + String(lat) + "," + String(lon) + "," + String(alt) + "," + String(relative_alt)
 			+ "," + String(vx) + "," + String(vy) + "," + String(vz) + "," + String(heading) + "," + String(airspeed) + "," + String(groundspeed) + "," + String(verticalspeed)
 			+ "," + String(press_abs) + "," + String(press_diff) + "," + String(temperature) + "," + String(OP1) + "," + String(OP2) + "," + String(CO_Mean));
@@ -366,26 +367,15 @@ void SD_Initialize() {
 	pinMode(10, OUTPUT); //Must declare pin10 as an output and reserve it
 	SD_Connected = SD.begin(BUILTIN_SDCARD); //Initialize the SD card reader
 	// create filename, open file, write headers
-	int i = 1;
-	bool FileExists = 1;
-	while (FileExists) {
-		if (i < 10) {
-			LogFileName = String("Log0") + String(i) + String(".csv");
-		}
-		else {
-			LogFileName = String("Log") + String(i) + String(".csv");
-		}
-		char __LogFileName[sizeof(LogFileName)];
-		LogFileName.toCharArray(__LogFileName, sizeof(__LogFileName));
-		FileExists = SD.exists(__LogFileName);
-		++i;
-	}
+	FileString();
+	
 	// write file headers
-	char __LogFileName[sizeof(LogFileName)];
-	LogFileName.toCharArray(__LogFileName, sizeof(__LogFileName));
-	mySensorData = SD.open(__LogFileName, FILE_WRITE);
+	//char __LogFileName[sizeof(LogFileName)];
+	//LogFileName.toCharArray(__LogFileName, sizeof(__LogFileName));
+	Serial.println(LogFileName);
+	mySensorData = SD.open(LogFileName, FILE_WRITE);
 	if (mySensorData) {
-		mySensorData.println("Time_boot_ms,Roll,Pitch,Yaw,RollSpeed,PitchSpeed,YawSpeed,Lat,Lon,Alt,RelativeAlt,vx,vy,vz,Heading,Airspeed,GroundSpeed,ClimbSpeed,Press_Abs,PressDiff,Temperature,OP1,OP2,CO");
+		mySensorData.println("Date (YYYY-MM-DD),Time (HH-MM-SS),Time_boot_ms,Roll,Pitch,Yaw,RollSpeed,PitchSpeed,YawSpeed,Lat,Lon,Alt,RelativeAlt,vx,vy,vz,Heading,Airspeed,GroundSpeed,ClimbSpeed,Press_Abs,PressDiff,Temperature,OP1,OP2,CO");
 		mySensorData.close(); //close the file
 	}
 }
@@ -434,7 +424,7 @@ void AutoPilot_Setup() {
 		send_message(&msg1); // send data request msg
 	}
 	Serial.println("Auto Pilot intializing....");
-	while (lat == 0){
+	while (gpsfix<2){
 		receive_msg();
 		digitalWrite(LED_BUILTIN, HIGH);
 		delay(100);
@@ -443,4 +433,27 @@ void AutoPilot_Setup() {
 	}
 	Serial.println("Auto Pilot online");
 	digitalWrite(LED_BUILTIN, HIGH);
+}
+
+void FileString() {
+	Serial.println("Waiting for date & time from GPS....");
+	while (year(Time_UTC) == 1970) {
+		receive_msg();
+		digitalWrite(LED_BUILTIN, HIGH);
+		delay(125);
+		digitalWrite(LED_BUILTIN, LOW);
+		delay(125);
+	}
+		sprintf(GPSDateStamp, "%.2i-%.2i-%.2i", year(Time_UTC), month(Time_UTC), day(Time_UTC));
+		sprintf(GPSTimeStamp, "%.2i-%.2i-%.2i", hour(Time_UTC), minute(Time_UTC), second(Time_UTC));
+
+		int idx = 1;
+		bool FileExists = 1;
+		while (FileExists) {
+			sprintf(LogFileName, "%03iLog%02i.csv", TeensySys_id, idx);
+			FileExists = SD.exists(LogFileName);
+			++idx;
+		}
+		Serial.println(LogFileName);
+		Serial.println("Date & time received, we're off to do some loggin'");
 }
