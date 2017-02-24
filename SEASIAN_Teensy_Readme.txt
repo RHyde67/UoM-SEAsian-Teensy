@@ -1,3 +1,21 @@
+Ver05
+Fixed compile error in Arduino.
+Hex file included. This will provide the same Teensy system and component ID to every system, which in turn labels all log files the same. Ideally the system ID should be changed for each Teensy.
+
+Ver04
+General code tidy, superfluous, historical, remarked code removed.
+Changes:
+1.
+GPS Time & Date acquired.
+Log file is named with 3 digit System ID, 'Log' and 2 digit Log File Number, nnnLogmm.csv	This allows easy use of multiple files. I tried using long filenames in the format YYYY-MM-DD_HH-MM-SS_Sys-ID.csv. Worked right up the point I realised we're limited to 8.3 file names!
+Log file now includes the date stamp and time stamp in the first two columns.
+
+2.
+Further boot error checking added, the system checks for:
+a. availability of the AP, v.fast flashes
+b. receipt of Mavlink msgs containing GPS data, fast flashes
+c. then sanity checks the year of the timestamp, i.e. not 1970, medium flashes.
+
 Ver03
 minor code tidying
 Proper conversion from sensor Voltage in to ppb using zero offset and multiplier value from the sensor calibration certificate.
@@ -9,6 +27,7 @@ Moved Mavlink message request and added error checking for Autopilot during set 
 4. receives message and checks for Lat not equal to zero, fast blink, serial print 'Auto Pilot intializing....'
 5. Serial print 'Auto Pilot online'
 6. LED returns to steady on, setup continues
+when running, single flash for telemetry, single flash for SD write, looks like dual flash under normal circumstances.
 
 
 

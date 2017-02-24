@@ -1,4 +1,3 @@
-
 #include "libraries\checksum.h"
 #include "libraries\ardupilotmega\mavlink.h" // loads mavlink from common
 #include <ADC.h>
@@ -8,6 +7,7 @@
 #include <SD.h> //Load SD card library
 #include <SPI.h> //Load SPI Library
 #include <Time.h>
+#include <TimeLib.h>
 
 // set this to the hardware serial port you wish to use
 #define APSERIAL Serial1 //Autopilot Port RX(pin0) TX(pin1) 
@@ -23,7 +23,7 @@ ADC::Sync_result result;
 // Autopilot variables
 int PixSys_id = 1;  // system ID for Autopilot - internal to pass messages from Teensy to AP, do not change this for mutliple systems transmitting to ground
 int PixComponent_id = 1; // Component ID for Autopilot - internal to pass messages from Teensy to AP, do not change this for mutliple systems transmitting to ground
-int TeensySys_id = 127; // System ID for Teensy - change this for mutliple systems transmitting to ground
+int TeensySys_id = 126; // System ID for Teensy - change this for mutliple systems transmitting to ground
 int TeensyComponent_id = 1; // Component ID for Teensy - change this for mutliple systems transmitting to ground
 float roll = 0;
 float pitch = 0;
@@ -300,12 +300,12 @@ void handleMessage(mavlink_message_t* msg) //handle the messages and decode to v
 }
 
 void SD_write() {
-	//Serial.println("Writing to SD");
+	// Serial.println("Writing to SD");
 	sprintf(GPSTimeStamp, "%.2i-%.2i-%.2i", hour(Time_UTC), minute(Time_UTC), second(Time_UTC));
 	//Serial.println(GPSTimeStamp);
 	sprintf(GPSDateStamp, "%.2i-%.2i-%.2i", year(Time_UTC), month(Time_UTC), day(Time_UTC));
-	//Serial.println(GPSDateStamp);
-	//Serial.println(LogFileName);
+	// Serial.println(GPSDateStamp);
+	// Serial.println(LogFileName);
 	mySensorData = SD.open(LogFileName, FILE_WRITE);
 	if (mySensorData) {
 
@@ -419,13 +419,14 @@ void AutoPilot_Setup() {
 
 	if (APSERIAL.available() > 0) {
 		// Send request for data
-		receive_msg(); // receive msg first to identify AP
+		//receive_msg(); // receive msg first to identify AP
 		mavlink_msg_request_data_stream_pack(TeensySys_id, TeensyComponent_id, &msg1, PixSys_id, PixComponent_id, MAV_DATA_STREAM_ALL, 20, 1); // build data request msg
 		send_message(&msg1); // send data request msg
 	}
 	Serial.println("Auto Pilot intializing....");
 	while (gpsfix<2){
 		receive_msg();
+
 		digitalWrite(LED_BUILTIN, HIGH);
 		delay(100);
 		digitalWrite(LED_BUILTIN, LOW);
