@@ -87,6 +87,8 @@ char LogFileName[32];
 char GPSDateStamp[10];
 char GPSTimeStamp[8];
 
+// String Year;
+
 // Generic Variables
 int PinLED = 13; // LED pin to allow flashing
 
@@ -114,7 +116,7 @@ void loop() {
 	// put your main code here, to run repeatedly:  
 	//Serial.println("Running...");
 	//int incomingByte;
-	// int outgoingByte;
+	int outgoingByte;
 	unsigned long currentMillis = millis();
 
 	receive_msg();
@@ -139,13 +141,13 @@ void loop() {
 
 	}
 
+
 	//Take the GCS inputs from the telemetry module and transfer them to the AP port
-	/* not currently used
 	if (TELEMSERIAL.available() > 0) {
 		outgoingByte = TELEMSERIAL.read();
 		APSERIAL.write(outgoingByte);
 	}
-	*/
+
 }
 
 void send_message(mavlink_message_t* msg) //send data bit by bit
@@ -298,11 +300,15 @@ void handleMessage(mavlink_message_t* msg) //handle the messages and decode to v
 }
 
 void SD_write() {
+	//Serial.println("Writing to SD");
 	sprintf(GPSTimeStamp, "%.2i-%.2i-%.2i", hour(Time_UTC), minute(Time_UTC), second(Time_UTC));
+	//Serial.println(GPSTimeStamp);
 	sprintf(GPSDateStamp, "%.2i-%.2i-%.2i", year(Time_UTC), month(Time_UTC), day(Time_UTC));
+	//Serial.println(GPSDateStamp);
+	//Serial.println(LogFileName);
 	mySensorData = SD.open(LogFileName, FILE_WRITE);
 	if (mySensorData) {
-		// TODO: tidy this line from string to character array write
+
 		mySensorData.println(String(GPSDateStamp) + "," + String(GPSTimeStamp) + "," + String(time_boot_ms) + "," + String(roll) + "," + String(pitch) + "," + String(yaw) + "," + String(rollspeed)
 			+ "," + String(pitchspeed) + "," + String(yawspeed) + "," + String(lat) + "," + String(lon) + "," + String(alt) + "," + String(relative_alt)
 			+ "," + String(vx) + "," + String(vy) + "," + String(vz) + "," + String(heading) + "," + String(airspeed) + "," + String(groundspeed) + "," + String(verticalspeed)
@@ -313,11 +319,18 @@ void SD_write() {
 }
 
 void Read_Sensor(int, float, int &CO_Count, float &CO_Mean) {
-	// Asynchronous read sensor output
+	// result = adc->analogSynchronizedRead(OP1pin, OP2pin); // should be this line? why was it changed?
 	result = adc->readSynchronizedContinuous();
+	// if using 16 bits and single-ended is necessary to typecast to unsigned,
+	// otherwise values larger than 3.3/2 will be interpreted as negative
 	result.result_adc0 = (uint16_t)result.result_adc0;
 	result.result_adc1 = (uint16_t)result.result_adc1;
-	// Convert sensor voltage to ppb
+
+	//ADC::Sync_result result = adc->analogSynchronizedRead(OP1pin, OP2pin);
+	//Modify the calibration value according to the sensor you are using
+	
+	// calculate the (fraction of the Vin range) times (what that range represents in sensor V) divided by (calibration value)
+	
 	OP1 = (((float)result.result_adc0 / adc->getMaxValue(ADC_0)) * 5) * 1000; //Converting the voltage reading into fraction of sensor range in mV
 	OP2 = (((float)result.result_adc1 / adc->getMaxValue(ADC_1)) * 5) * 1000; //Converting the voltage reading into fraction of sensor range in mV
 	CO = OP1 - OP2; // Calculate corrected sensor voltage
@@ -334,6 +347,7 @@ void Read_Sensor(int, float, int &CO_Count, float &CO_Mean) {
 }
 
 void Send_Telem() {
+	//Send2Ground();
 	// Initialize the required buffers 
 	mavlink_message_t atm;
 	uint8_t buf[MAVLINK_MAX_PACKET_LEN];
@@ -352,11 +366,12 @@ void Send_Telem() {
 void SD_Initialize() {
 	pinMode(10, OUTPUT); //Must declare pin10 as an output and reserve it
 	SD_Connected = SD.begin(BUILTIN_SDCARD); //Initialize the SD card reader
-
-	// create filename
+	// create filename, open file, write headers
 	FileString();
 	
 	// write file headers
+	//char __LogFileName[sizeof(LogFileName)];
+	//LogFileName.toCharArray(__LogFileName, sizeof(__LogFileName));
 	Serial.println(LogFileName);
 	mySensorData = SD.open(LogFileName, FILE_WRITE);
 	if (mySensorData) {
@@ -369,6 +384,11 @@ void ADC_Setup() {
 // ADC0
 	pinMode(OP1pin, INPUT); // configuring OP1pin as input
 	pinMode(OP2pin, INPUT); // configuring OP2pin as input
+							// Initializing serial ports
+							//Serial.begin(9600);
+							///// ADC0 ////
+							// reference can be ADC_REF_3V3, ADC_REF_1V2 (not for Teensy LC) or ADC_REF_EXT.
+							//adc->setReference(ADC_REF_1V2, ADC_0); // change all 3.3 to 1.2 if you change the reference to 1V2
 	adc->setAveraging(10); // set number of samples to be taken and averaged to give a reading
 	adc->setResolution(12); // set bits of resolution
 	adc->setConversionSpeed(ADC_HIGH_SPEED_16BITS); // change the conversion speed it can be ADC_VERY_LOW_SPEED, ADC_LOW_SPEED, ADC_MED_SPEED, ADC_HIGH_SPEED or ADC_VERY_HIGH_SPEED
