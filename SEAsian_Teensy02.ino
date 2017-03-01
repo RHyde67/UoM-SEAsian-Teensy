@@ -87,10 +87,10 @@ char LogFileName[32];
 char GPSDateStamp[10];
 char GPSTimeStamp[8];
 
-// String Year;
-
 // Generic Variables
 int PinLED = 13; // LED pin to allow flashing
+int GPS_Timeout = 10000; // timeout for failing to find GPS unit in (ms), set to -1 to force wait for GPS
+bool GPS_Found = 0; // flag for presence of GPS unit
 
 
 void setup() {
@@ -103,7 +103,16 @@ void setup() {
 	
 	AutoPilot_Setup();
 
-	SD_Initialize();
+	SD_Connected = SD.begin(BUILTIN_SDCARD); //Initialize the SD card reader
+	if (SD_Connected) {
+		SD_Initialize();
+		Serial.print("SD Card present, logging to file: ");
+		Serial.println(LogFileName);
+	}
+	else {
+		Serial.println("SD Card not Present");
+	}
+
 		
 	lognum = millis();// can add a lastlog file on sd card to keep track if needed
 
@@ -304,8 +313,6 @@ void SD_write() {
 	sprintf(GPSTimeStamp, "%.2i-%.2i-%.2i", hour(Time_UTC), minute(Time_UTC), second(Time_UTC));
 	//Serial.println(GPSTimeStamp);
 	sprintf(GPSDateStamp, "%.2i-%.2i-%.2i", year(Time_UTC), month(Time_UTC), day(Time_UTC));
-	 Serial.println(GPSDateStamp);
-	 Serial.println(LogFileName);
 	mySensorData = SD.open(LogFileName, FILE_WRITE);
 	if (mySensorData) {
 
@@ -362,13 +369,10 @@ void Send_Telem() {
 
 void SD_Initialize() {
 	pinMode(10, OUTPUT); //Must declare pin10 as an output and reserve it
-	SD_Connected = SD.begin(BUILTIN_SDCARD); //Initialize the SD card reader
 	// create filename, open file, write headers
 	FileString();
 	
 	// write file headers
-	//char __LogFileName[sizeof(LogFileName)];
-	//LogFileName.toCharArray(__LogFileName, sizeof(__LogFileName));
 	Serial.println(LogFileName);
 	mySensorData = SD.open(LogFileName, FILE_WRITE);
 	if (mySensorData) {
@@ -421,30 +425,46 @@ void AutoPilot_Setup() {
 		send_message(&msg1); // send data request msg
 	}
 	Serial.println("Auto Pilot intializing....");
-	while (gpsfix<2){
-		receive_msg();
+	int GPS_TimeTest = millis();
+	while (gpsfix<2 && millis()-GPS_TimeTest<GPS_Timeout){
 
+		receive_msg();
 		digitalWrite(LED_BUILTIN, HIGH);
 		delay(100);
 		digitalWrite(LED_BUILTIN, LOW);
 		delay(100);
 	}
-	Serial.println("Auto Pilot online");
+	if (gpsfix >= 3) {
+		Serial.println("Auto Pilot online");
+		GPS_Found = 1;
+	}
+	else {
+		Serial.println("GPS not found");
+		GPS_Found = 0;
+	}
 	digitalWrite(LED_BUILTIN, HIGH);
 }
 
 void FileString() {
-	Serial.println("Waiting for date & time from GPS....");
-	while (year(Time_UTC) == 1970) {
-		receive_msg();
-		digitalWrite(LED_BUILTIN, HIGH);
-		delay(125);
-		digitalWrite(LED_BUILTIN, LOW);
-		delay(125);
-	}
+	if (GPS_Found) {
+		Serial.println("Waiting for date & time from GPS....");
+		while (year(Time_UTC) == 1970) {
+			receive_msg();
+			digitalWrite(LED_BUILTIN, HIGH);
+			delay(125);
+			digitalWrite(LED_BUILTIN, LOW);
+			delay(125);
+		}
 		sprintf(GPSDateStamp, "%.2i-%.2i-%.2i", year(Time_UTC), month(Time_UTC), day(Time_UTC));
 		sprintf(GPSTimeStamp, "%.2i-%.2i-%.2i", hour(Time_UTC), minute(Time_UTC), second(Time_UTC));
+		Serial.println("Date & time received, we're off to do some loggin'");
+	}
+	else {
+		Serial.println("No GPS signal");
+		sprintf(GPSDateStamp, "%.2i-%.2i-%.2i", 00, 00, 00);
+		sprintf(GPSTimeStamp, "%.2i-%.2i-%.2i", 00, 00, 00);
 
+	}
 		int idx = 1;
 		bool FileExists = 1;
 		while (FileExists) {
@@ -452,6 +472,8 @@ void FileString() {
 			FileExists = SD.exists(LogFileName);
 			++idx;
 		}
+		Serial.print("Logging to file: ");
 		Serial.println(LogFileName);
-		Serial.println("Date & time received, we're off to do some loggin'");
+		
+		
 }
