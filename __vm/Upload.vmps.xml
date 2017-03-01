@@ -9,24 +9,44 @@
       <VCCodeMacros />
     </VCCodeModel>
     <BreakPoints>
-      <BreakPoint Index="1" Name="SEAsian_Teensy02.ino, line 446" Id="a3949632-d634-489e-ba1b-2ff7298aedb2" Enabled="1" Message="{gpsfix}{lat}{lon}" MessageTextType="2" PreProcessedMessage="{0}{1}{2}" Condition="" ConditionType="1" CurrentHits="0" File="c:\users\hyder\documents\qsync\arduino\seasian_teensy02\seasian_teensy02.ino" FileLine="446" FileColumn="1" FunctionName="FileString()" FunctionLineOffset="8" FunctionColumnOffset="1" HitCountTarget="1" HitCountType="1" Language="C++" LocationType="3" Tag="&lt;vmbp Id='a3949632-d634-489e-ba1b-2ff7298aedb2'/&gt;" Type="1" ToString="System.__ComObject" BreakWhenHit="0">
-        <Source>439	void FileString() {
-440		Serial.println("Waiting for date &amp; time from GPS....");
-441		while (year(Time_UTC) == 1970) {
-442			receive_msg();
-443			digitalWrite(LED_BUILTIN, HIGH);
-444			delay(125);
-445			digitalWrite(LED_BUILTIN, LOW);
---&gt;446			delay(125);
-447		}
-448			sprintf(GPSDateStamp, "%.2i-%.2i-%.2i", year(Time_UTC), month(Time_UTC), day(Time_UTC));
-449			sprintf(GPSTimeStamp, "%.2i-%.2i-%.2i", hour(Time_UTC), minute(Time_UTC), second(Time_UTC));
-450	
-451			int idx = 1;
-452			bool FileExists = 1;
-453			while (FileExists) {
-454				sprintf(LogFileName, "%03iLog%02i.csv", TeensySys_id, idx);
-455				FileExists = SD.exists(LogFileName);
+      <BreakPoint Index="1" Name="vctmp9124_431682.SEAsian_Teensy02.85b4c2e3.ino, line 390" Id="5bf0dece-fb39-45ff-9cec-b1ef4acbc543" Enabled="1" Message="" MessageTextType="2" PreProcessedMessage="" Condition="" ConditionType="1" CurrentHits="0" File="c:\users\hyder\appdata\local\temp\tfstemp\vctmp9124_431682.seasian_teensy02.85b4c2e3.ino" FileLine="390" FileColumn="1" FunctionName="AutoPilot_Setup()" FunctionLineOffset="4" FunctionColumnOffset="1" HitCountTarget="1" HitCountType="1" Language="C++" LocationType="3" Tag="&lt;vmbp Id='5bf0dece-fb39-45ff-9cec-b1ef4acbc543'/&gt;" Type="1" ToString="System.__ComObject" BreakWhenHit="1">
+        <Source>383	
+384		adc-&gt;startSynchronizedContinuous(OP1pin, OP2pin);
+385	}
+386	
+387	void AutoPilot_Setup() {
+388		mavlink_message_t msg1;
+389	
+--&gt;390		Serial.println("Searching for Auto Pilot....");
+391		while (APSERIAL.available() == 0)
+392		{
+393			digitalWrite(LED_BUILTIN, HIGH);
+394			delay(20);
+395				digitalWrite(LED_BUILTIN, LOW);
+396			delay(50);
+397		}
+398		Serial.println("Auto Pilot found");
+399	
+</Source>
+      </BreakPoint>
+      <BreakPoint Index="2" Name="SEAsian_Teensy02.ino, line 429" Id="b77c999c-6847-4078-85e9-4ec65a61c1b5" Enabled="1" Message="{gpsfix}{lat}{lon}" MessageTextType="2" PreProcessedMessage="{0}{1}{2}" Condition="" ConditionType="1" CurrentHits="0" File="c:\users\hyder\documents\qsync\arduino\seasian_teensy02\seasian_teensy02.ino" FileLine="429" FileColumn="1" FunctionName="AutoPilot_Setup()" FunctionLineOffset="23" FunctionColumnOffset="1" HitCountTarget="1" HitCountType="1" Language="C++" LocationType="3" Tag="&lt;vmbp Id='b77c999c-6847-4078-85e9-4ec65a61c1b5'/&gt;" Type="1" ToString="System.__ComObject" BreakWhenHit="0">
+        <Source>422			//receive_msg(); // receive msg first to identify AP
+423			mavlink_msg_request_data_stream_pack(TeensySys_id, TeensyComponent_id, &amp;msg1, PixSys_id, PixComponent_id, MAV_DATA_STREAM_ALL, 20, 1); // build data request msg
+424			send_message(&amp;msg1); // send data request msg
+425		}
+426		Serial.println("Auto Pilot intializing....");
+427		while (gpsfix&lt;2){
+428			receive_msg();
+--&gt;429	
+430			digitalWrite(LED_BUILTIN, HIGH);
+431			delay(100);
+432			digitalWrite(LED_BUILTIN, LOW);
+433			delay(100);
+434		}
+435		Serial.println("Auto Pilot online");
+436		digitalWrite(LED_BUILTIN, HIGH);
+437	}
+438	
 </Source>
         <MessageVariables>
           <MessageVariable Name="gpsfix" Index="1" />
@@ -34,24 +54,24 @@
           <MessageVariable Name="lon" Index="3" />
         </MessageVariables>
       </BreakPoint>
-      <BreakPoint Index="2" Name="SEAsian_Teensy02.ino, line 373" Id="9c12281c-e281-42eb-a7a2-0dc95122d6ba" Enabled="1" Message="{TeensySys_id}{TeensyComponent_id}{gpsfix}{time_boot_ms}{roll}{pitch}{yaw}{rollspeed}{pitchspeed}{yawspeed}{lat}{lon}{alt}{relative_alt}{vx}{vy}{vz}{heading}{airspeed}{groundspeed}{verticalspeed}{press_abs}{press_diff}{temperature}{OP1}{OP2}{CO}" MessageTextType="2" PreProcessedMessage="{0}{1}{2}{3}{4}{5}{6}{7}{8}{9}{10}{11}{12}{13}{14}{15}{16}{17}{18}{19}{20}{21}{22}{23}{24}{25}{26}" Condition="" ConditionType="1" CurrentHits="0" File="c:\users\hyder\documents\qsync\arduino\seasian_teensy02\seasian_teensy02.ino" FileLine="373" FileColumn="1" FunctionName="SD_Initialize()" FunctionLineOffset="8" FunctionColumnOffset="1" HitCountTarget="1" HitCountType="1" Language="C++" LocationType="3" Tag="&lt;vmbp Id='9c12281c-e281-42eb-a7a2-0dc95122d6ba'/&gt;" Type="1" ToString="System.__ComObject" BreakWhenHit="0">
-        <Source>366	void SD_Initialize() {
-367		pinMode(10, OUTPUT); //Must declare pin10 as an output and reserve it
-368		SD_Connected = SD.begin(BUILTIN_SDCARD); //Initialize the SD card reader
-369		// create filename, open file, write headers
-370		FileString();
-371		
-372		// write file headers
---&gt;373		//char __LogFileName[sizeof(LogFileName)];
-374		//LogFileName.toCharArray(__LogFileName, sizeof(__LogFileName));
-375		Serial.println(LogFileName);
-376		mySensorData = SD.open(LogFileName, FILE_WRITE);
-377		if (mySensorData) {
-378			mySensorData.println("Date (YYYY-MM-DD),Time (HH-MM-SS),Time_boot_ms,Roll,Pitch,Yaw,RollSpeed,PitchSpeed,YawSpeed,Lat,Lon,Alt,RelativeAlt,vx,vy,vz,Heading,Airspeed,GroundSpeed,ClimbSpeed,Press_Abs,PressDiff,Temperature,OP1,OP2,CO");
-379			mySensorData.close(); //close the file
-380		}
-381	}
-382	
+      <BreakPoint Index="3" Name="SEAsian_Teensy02.ino, line 316" Id="b96d581f-37da-4248-a3ee-95ddf0bd1878" Enabled="1" Message="{TeensySys_id}{TeensyComponent_id}{gpsfix}{time_boot_ms}{roll}{pitch}{yaw}{rollspeed}{pitchspeed}{yawspeed}{lat}{lon}{alt}{relative_alt}{vx}{vy}{vz}{heading}{airspeed}{groundspeed}{verticalspeed}{press_abs}{press_diff}{temperature}{OP1}{OP2}{CO}" MessageTextType="2" PreProcessedMessage="{0}{1}{2}{3}{4}{5}{6}{7}{8}{9}{10}{11}{12}{13}{14}{15}{16}{17}{18}{19}{20}{21}{22}{23}{24}{25}{26}" Condition="" ConditionType="1" CurrentHits="0" File="c:\users\hyder\documents\qsync\arduino\seasian_teensy02\seasian_teensy02.ino" FileLine="316" FileColumn="1" FunctionName="SD_write()" FunctionLineOffset="15" FunctionColumnOffset="1" HitCountTarget="1" HitCountType="1" Language="C++" LocationType="3" Tag="&lt;vmbp Id='b96d581f-37da-4248-a3ee-95ddf0bd1878'/&gt;" Type="1" ToString="System.__ComObject" BreakWhenHit="0">
+        <Source>309		mySensorData = SD.open(LogFileName, FILE_WRITE);
+310		if (mySensorData) {
+311	
+312			mySensorData.println(String(GPSDateStamp) + "," + String(GPSTimeStamp) + "," + String(time_boot_ms) + "," + String(roll) + "," + String(pitch) + "," + String(yaw) + "," + String(rollspeed)
+313				+ "," + String(pitchspeed) + "," + String(yawspeed) + "," + String(lat) + "," + String(lon) + "," + String(alt) + "," + String(relative_alt)
+314				+ "," + String(vx) + "," + String(vy) + "," + String(vz) + "," + String(heading) + "," + String(airspeed) + "," + String(groundspeed) + "," + String(verticalspeed)
+315				+ "," + String(press_abs) + "," + String(press_diff) + "," + String(temperature) + "," + String(OP1) + "," + String(OP2) + "," + String(CO_Mean));
+--&gt;316	
+317			mySensorData.close(); //close the file
+318		}
+319	}
+320	
+321	void Read_Sensor(int, float, int &amp;CO_Count, float &amp;CO_Mean) {
+322		// result = adc-&gt;analogSynchronizedRead(OP1pin, OP2pin); // should be this line? why was it changed?
+323		result = adc-&gt;readSynchronizedContinuous();
+324		// if using 16 bits and single-ended is necessary to typecast to unsigned,
+325		// otherwise values larger than 3.3/2 will be interpreted as negative
 </Source>
         <MessageVariables>
           <MessageVariable Name="TeensySys_id" Index="1" />
@@ -83,72 +103,53 @@
           <MessageVariable Name="CO" Index="27" />
         </MessageVariables>
       </BreakPoint>
-      <BreakPoint Index="3" Name="vctmp9124_431682.SEAsian_Teensy02.85b4c2e3.ino, line 390" Id="5bf0dece-fb39-45ff-9cec-b1ef4acbc543" Enabled="1" Message="" MessageTextType="2" PreProcessedMessage="" Condition="" ConditionType="1" CurrentHits="0" File="c:\users\hyder\appdata\local\temp\tfstemp\vctmp9124_431682.seasian_teensy02.85b4c2e3.ino" FileLine="390" FileColumn="1" FunctionName="AutoPilot_Setup()" FunctionLineOffset="4" FunctionColumnOffset="1" HitCountTarget="1" HitCountType="1" Language="C++" LocationType="3" Tag="&lt;vmbp Id='5bf0dece-fb39-45ff-9cec-b1ef4acbc543'/&gt;" Type="1" ToString="System.__ComObject" BreakWhenHit="1">
-        <Source>383	
-384		adc-&gt;startSynchronizedContinuous(OP1pin, OP2pin);
-385	}
-386	
-387	void AutoPilot_Setup() {
-388		mavlink_message_t msg1;
-389	
---&gt;390		Serial.println("Searching for Auto Pilot....");
-391		while (APSERIAL.available() == 0)
-392		{
-393			digitalWrite(LED_BUILTIN, HIGH);
-394			delay(20);
-395				digitalWrite(LED_BUILTIN, LOW);
-396			delay(50);
-397		}
-398		Serial.println("Auto Pilot found");
-399	
-</Source>
-      </BreakPoint>
-      <BreakPoint Index="4" Name="SEAsian_Teensy02.ino, line 311" Id="3e73c99d-52e2-4aa0-867e-b13b58bb4fbf" Enabled="1" Message="{TeensySys_id}{TeensyComponent_id}{time_boot_ms}{roll}{pitch}{yaw}{rollspeed}{pitchspeed}{yawspeed}{lat}{lon}{alt}{relative_alt}{vx}{vy}{vz}{heading}{airspeed}{groundspeed}{verticalspeed}{press_abs}{press_diff}{temperature}{OP1}{OP2}{CO}" MessageTextType="2" PreProcessedMessage="{0}{1}{2}{3}{4}{5}{6}{7}{8}{9}{10}{11}{12}{13}{14}{15}{16}{17}{18}{19}{20}{21}{22}{23}{24}{25}" Condition="" ConditionType="1" CurrentHits="0" File="c:\users\hyder\documents\qsync\arduino\seasian_teensy02\seasian_teensy02.ino" FileLine="311" FileColumn="1" FunctionName="SD_write()" FunctionLineOffset="10" FunctionColumnOffset="1" HitCountTarget="1" HitCountType="1" Language="C++" LocationType="3" Tag="&lt;vmbp Id='3e73c99d-52e2-4aa0-867e-b13b58bb4fbf'/&gt;" Type="1" ToString="System.__ComObject" BreakWhenHit="0">
-        <Source>304		sprintf(GPSTimeStamp, "%.2i-%.2i-%.2i", hour(Time_UTC), minute(Time_UTC), second(Time_UTC));
-305		//Serial.println(GPSTimeStamp);
-306		sprintf(GPSDateStamp, "%.2i-%.2i-%.2i", year(Time_UTC), month(Time_UTC), day(Time_UTC));
-307		//Serial.println(GPSDateStamp);
-308		//Serial.println(LogFileName);
-309		mySensorData = SD.open(LogFileName, FILE_WRITE);
-310		if (mySensorData) {
---&gt;311	
-312			mySensorData.println(String(GPSDateStamp) + "," + String(GPSTimeStamp) + "," + String(time_boot_ms) + "," + String(roll) + "," + String(pitch) + "," + String(yaw) + "," + String(rollspeed)
-313				+ "," + String(pitchspeed) + "," + String(yawspeed) + "," + String(lat) + "," + String(lon) + "," + String(alt) + "," + String(relative_alt)
-314				+ "," + String(vx) + "," + String(vy) + "," + String(vz) + "," + String(heading) + "," + String(airspeed) + "," + String(groundspeed) + "," + String(verticalspeed)
-315				+ "," + String(press_abs) + "," + String(press_diff) + "," + String(temperature) + "," + String(OP1) + "," + String(OP2) + "," + String(CO_Mean));
-316	
-317			mySensorData.close(); //close the file
-318		}
-319	}
-320	
+      <BreakPoint Index="4" Name="SEAsian_Teensy02.ino, line 361" Id="094f1ac2-ecd9-41d3-bc21-0b051abab505" Enabled="1" Message="{TeensySys_id}{TeensyComponent_id}{gpsfix}{time_boot_ms}{roll}{pitch}{yaw}{rollspeed}{pitchspeed}{yawspeed}{lat}{lon}{alt}{relative_alt}{vx}{vy}{vz}{heading}{airspeed}{groundspeed}{verticalspeed}{press_abs}{press_diff}{temperature}{OP1}{OP2}{CO}" MessageTextType="2" PreProcessedMessage="{0}{1}{2}{3}{4}{5}{6}{7}{8}{9}{10}{11}{12}{13}{14}{15}{16}{17}{18}{19}{20}{21}{22}{23}{24}{25}{26}" Condition="" ConditionType="1" CurrentHits="0" File="c:\users\hyder\documents\qsync\arduino\seasian_teensy02\seasian_teensy02.ino" FileLine="361" FileColumn="1" FunctionName="Send_Telem()" FunctionLineOffset="13" FunctionColumnOffset="1" HitCountTarget="1" HitCountType="1" Language="C++" LocationType="3" Tag="&lt;vmbp Id='ad23a28e-bb9c-4ea9-bfdb-01001716ddc2'/&gt;" Type="1" ToString="System.__ComObject" BreakWhenHit="0">
+        <Source>354		// Pack the new message with our data attached
+355		mavlink_msg_uom_atmospheric_data_pack(TeensySys_id, TeensyComponent_id, &amp;atm,
+356			roll, pitch, yaw, rollspeed, pitchspeed, yawspeed, time_boot_ms, lat, lon,
+357			alt, relative_alt, vx, vy, vz, airspeed, groundspeed, heading, press_abs,
+358			press_diff, temperature, OP1, OP2, CO_Mean);
+359													  // Copy the message to send buffer 
+360		uint16_t len = mavlink_msg_to_send_buffer(buf, &amp;atm);
+--&gt;361	
+362		// Send the uom_atmospheric_data_pack to the GCS through the telemetry module 
+363		TELEMSERIAL.write(buf, len);
+364	}
+365	
+366	void SD_Initialize() {
+367		pinMode(10, OUTPUT); //Must declare pin10 as an output and reserve it
+368		SD_Connected = SD.begin(BUILTIN_SDCARD); //Initialize the SD card reader
+369		// create filename, open file, write headers
+370		FileString();
 </Source>
         <MessageVariables>
           <MessageVariable Name="TeensySys_id" Index="1" />
           <MessageVariable Name="TeensyComponent_id" Index="2" />
-          <MessageVariable Name="time_boot_ms" Index="3" />
-          <MessageVariable Name="roll" Index="4" />
-          <MessageVariable Name="pitch" Index="5" />
-          <MessageVariable Name="yaw" Index="6" />
-          <MessageVariable Name="rollspeed" Index="7" />
-          <MessageVariable Name="pitchspeed" Index="8" />
-          <MessageVariable Name="yawspeed" Index="9" />
-          <MessageVariable Name="lat" Index="10" />
-          <MessageVariable Name="lon" Index="11" />
-          <MessageVariable Name="alt" Index="12" />
-          <MessageVariable Name="relative_alt" Index="13" />
-          <MessageVariable Name="vx" Index="14" />
-          <MessageVariable Name="vy" Index="15" />
-          <MessageVariable Name="vz" Index="16" />
-          <MessageVariable Name="heading" Index="17" />
-          <MessageVariable Name="airspeed" Index="18" />
-          <MessageVariable Name="groundspeed" Index="19" />
-          <MessageVariable Name="verticalspeed" Index="20" />
-          <MessageVariable Name="press_abs" Index="21" />
-          <MessageVariable Name="press_diff" Index="22" />
-          <MessageVariable Name="temperature" Index="23" />
-          <MessageVariable Name="OP1" Index="24" />
-          <MessageVariable Name="OP2" Index="25" />
-          <MessageVariable Name="CO" Index="26" />
+          <MessageVariable Name="gpsfix" Index="3" />
+          <MessageVariable Name="time_boot_ms" Index="4" />
+          <MessageVariable Name="roll" Index="5" />
+          <MessageVariable Name="pitch" Index="6" />
+          <MessageVariable Name="yaw" Index="7" />
+          <MessageVariable Name="rollspeed" Index="8" />
+          <MessageVariable Name="pitchspeed" Index="9" />
+          <MessageVariable Name="yawspeed" Index="10" />
+          <MessageVariable Name="lat" Index="11" />
+          <MessageVariable Name="lon" Index="12" />
+          <MessageVariable Name="alt" Index="13" />
+          <MessageVariable Name="relative_alt" Index="14" />
+          <MessageVariable Name="vx" Index="15" />
+          <MessageVariable Name="vy" Index="16" />
+          <MessageVariable Name="vz" Index="17" />
+          <MessageVariable Name="heading" Index="18" />
+          <MessageVariable Name="airspeed" Index="19" />
+          <MessageVariable Name="groundspeed" Index="20" />
+          <MessageVariable Name="verticalspeed" Index="21" />
+          <MessageVariable Name="press_abs" Index="22" />
+          <MessageVariable Name="press_diff" Index="23" />
+          <MessageVariable Name="temperature" Index="24" />
+          <MessageVariable Name="OP1" Index="25" />
+          <MessageVariable Name="OP2" Index="26" />
+          <MessageVariable Name="CO" Index="27" />
         </MessageVariables>
       </BreakPoint>
     </BreakPoints>

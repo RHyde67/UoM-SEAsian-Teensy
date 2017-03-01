@@ -175,7 +175,7 @@ void receive_msg()
 
 void handleMessage(mavlink_message_t* msg) //handle the messages and decode to variables
 {
-	//Serial.println(msg->msgid);
+	// Serial.println(msg->msgid);
 
 	switch (msg->msgid) {
 	case MAVLINK_MSG_ID_HEARTBEAT:
@@ -304,8 +304,8 @@ void SD_write() {
 	sprintf(GPSTimeStamp, "%.2i-%.2i-%.2i", hour(Time_UTC), minute(Time_UTC), second(Time_UTC));
 	//Serial.println(GPSTimeStamp);
 	sprintf(GPSDateStamp, "%.2i-%.2i-%.2i", year(Time_UTC), month(Time_UTC), day(Time_UTC));
-	// Serial.println(GPSDateStamp);
-	// Serial.println(LogFileName);
+	 Serial.println(GPSDateStamp);
+	 Serial.println(LogFileName);
 	mySensorData = SD.open(LogFileName, FILE_WRITE);
 	if (mySensorData) {
 
@@ -336,7 +336,7 @@ void Read_Sensor(int, float, int &CO_Count, float &CO_Mean) {
 	CO = OP1 - OP2; // Calculate corrected sensor voltage
 	CO = (CO - COOffsetVal) / COCalibVal;
 	
-	if (CO >= 0){ // error check CO value
+	if (CO > 0) { // error check CO value
 		++CO_Count;
 		CO_Mean = ((CO_Mean * (CO_Count - 1)) + CO) / CO_Count; // recursive mean of CO
 	}
