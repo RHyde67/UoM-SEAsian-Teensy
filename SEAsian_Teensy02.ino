@@ -137,7 +137,7 @@ void loop() {
 			digitalWrite(PinLED, LOW); // LED off
 		}
 		CO_Count = 0;
-		CO_Mean = 0;
+		CO_Mean = -1;
 
 	}
 
@@ -339,9 +339,6 @@ void Read_Sensor(int, float, int &CO_Count, float &CO_Mean) {
 	if (CO > 0) { // error check CO value
 		++CO_Count;
 		CO_Mean = ((CO_Mean * (CO_Count - 1)) + CO) / CO_Count; // recursive mean of CO
-	}
-	else {
-		CO_Mean = -1; // error value
 	}
 	
 }
