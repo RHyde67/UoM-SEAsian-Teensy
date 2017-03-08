@@ -49,14 +49,17 @@ int temperature = 0;
 bool GCS_UNITS = 0; // 0 = meters, 1 = feet
 
 // CO Sensor Variables
-float COCalibVal = 0.439; // Multiplication factor for sensor from data sheet
-float COOffsetVal = 0.280; // zero offset value for sensor in mV, from data sheet (?)
+float COCalibVal = 0.442; // Multiplication factor for sensor from data sheet in mV per ppb
+float COOffsetVal1 = 338; // zero offset value for OP1 in mV
+float COOffsetVal2 = 345;// zero offset value for OP2 in mV
 
 float OP1 = 0; // sensor output 1
 float OP2 = 0; // sensor output 2
 float CO = 0; // CO reading computed from OP1 & OP2
 int CO_Count = 0; // number of CO samples (not accessible globally? so passed to sensor erading function)
-float CO_Mean = 0; // Recursively calculated mean for CO readings between SD writes (not accessible globally? so passed to sensor erading function)
+float CO_Mean = 0; // Recursively calculated mean for CO readings between SD writes (not accessible globally? so passed to sensor reading function)
+float OP1_Mean = 0; //Recursively calculated mean for bug checking sensor readings
+float OP2_Mean = 0; // Recursively calculated mean forbug checking sensor readings
 const long SD_Write_Period = 100; // millisecond between SD card writes
 
 // Raw GPS variables
@@ -86,11 +89,15 @@ bool SD_Connected = 0;
 char LogFileName[32];
 char GPSDateStamp[10];
 char GPSTimeStamp[8];
+char HeaderLine[73];
+char CardData[80];
 
 // Generic Variables
 int PinLED = 13; // LED pin to allow flashing
-int GPS_Timeout = 10000; // timeout for failing to find GPS unit in (ms), set to -1 to force wait for GPS
+uint GPS_Timeout = 10; // timeout for failing to find GPS unit in (ms), set to -1 to force wait for GPS
 bool GPS_Found = 0; // flag for presence of GPS unit
+elapsedMillis sinceMon1; // timer for periodic serial status writes
+uint writeCount = 0; // counter for number of data lines transmitted (should also match written to SDCard)
 
 
 void setup() {
@@ -138,6 +145,8 @@ void loop() {
 			Send_Telem();
 			digitalWrite(PinLED, LOW); // LED on
 			delay(50);
+
+			writeCount++;
 		
 		// Save the information sent to GCS in the mavlink packet on the SD card
 		if (SD_Connected) { //log the data only if the SD card is connected
@@ -148,6 +157,9 @@ void loop() {
 		CO_Count = 0;
 		CO_Mean = -1;
 
+		OP1_Mean = -1; // bug checking OP1 value
+		OP2_Mean = -1; // bug checking OP2 value
+
 	}
 
 
@@ -155,6 +167,22 @@ void loop() {
 	if (TELEMSERIAL.available() > 0) {
 		outgoingByte = TELEMSERIAL.read();
 		APSERIAL.write(outgoingByte);
+	}
+
+	// send status updates to serial port for tracking / bug checking
+	if (sinceMon1 >= 10000) {
+		sinceMon1 = sinceMon1 - 10000;
+		//    Serial.print("Free memory = ");
+		//    Serial.println(test_mon.free());
+		//    test_mon.run();
+		//    Serial.print("Free heap memory = ");
+		//    Serial.print(test_mon.heap_free());
+		//    Serial.print(", unallocated memory = ");
+		//    Serial.println(test_mon.unallocated());
+		Serial.print("Previsous Telemety time (ms) = ");
+		Serial.println(PrevTelemTime);
+		Serial.print("Previous write counter = ");
+		Serial.println(writeCount);
 	}
 
 }
@@ -316,10 +344,13 @@ void SD_write() {
 	mySensorData = SD.open(LogFileName, FILE_WRITE);
 	if (mySensorData) {
 
-		mySensorData.println(String(GPSDateStamp) + "," + String(GPSTimeStamp) + "," + String(time_boot_ms) + "," + String(roll) + "," + String(pitch) + "," + String(yaw) + "," + String(rollspeed)
-			+ "," + String(pitchspeed) + "," + String(yawspeed) + "," + String(lat) + "," + String(lon) + "," + String(alt) + "," + String(relative_alt)
-			+ "," + String(vx) + "," + String(vy) + "," + String(vz) + "," + String(heading) + "," + String(airspeed) + "," + String(groundspeed) + "," + String(verticalspeed)
-			+ "," + String(press_abs) + "," + String(press_diff) + "," + String(temperature) + "," + String(OP1) + "," + String(OP2) + "," + String(CO_Mean));
+		//Serial.println( "Creating char array" );
+		sprintf(CardData, "%s , %s , %i , %i , %i , %i, %i, %f", GPSDateStamp, GPSTimeStamp, time_boot_ms, lat, lon, alt, temperature, CO_Mean);
+		//Serial.println( "Char array created" );
+
+		//Serial.println( "Writing to card");
+			mySensorData.println(CardData);
+		//Serial.println( "Written to card" );
 
 		mySensorData.close(); //close the file
 	}
@@ -340,12 +371,17 @@ void Read_Sensor(int, float, int &CO_Count, float &CO_Mean) {
 	
 	OP1 = (((float)result.result_adc0 / adc->getMaxValue(ADC_0)) * 5) * 1000; //Converting the voltage reading into fraction of sensor range in mV
 	OP2 = (((float)result.result_adc1 / adc->getMaxValue(ADC_1)) * 5) * 1000; //Converting the voltage reading into fraction of sensor range in mV
-	CO = OP1 - OP2; // Calculate corrected sensor voltage
-	CO = (CO - COOffsetVal) / COCalibVal;
+	OP1 = OP1 - COOffsetVal1;
+	OP2 = (OP2 * -1.0 ) - COOffsetVal2;
+
+	CO = (OP1 - OP2) / COCalibVal; // Calculate corrected sensor value
 	
 	if (CO > 0) { // error check CO value
 		++CO_Count;
 		CO_Mean = ((CO_Mean * (CO_Count - 1)) + CO) / CO_Count; // recursive mean of CO
+
+		OP1_Mean = ((OP1_Mean * (CO_Count - 1)) + OP1) / CO_Count; // record mean OP1 values for bug checking
+		OP2_Mean = ((OP2_Mean * (CO_Count - 1)) + OP2) / CO_Count; // record mean OP2 values for bug checking
 	}
 	
 }
@@ -376,7 +412,8 @@ void SD_Initialize() {
 	Serial.println(LogFileName);
 	mySensorData = SD.open(LogFileName, FILE_WRITE);
 	if (mySensorData) {
-		mySensorData.println("Date (YYYY-MM-DD),Time (HH-MM-SS),Time_boot_ms,Roll,Pitch,Yaw,RollSpeed,PitchSpeed,YawSpeed,Lat,Lon,Alt,RelativeAlt,vx,vy,vz,Heading,Airspeed,GroundSpeed,ClimbSpeed,Press_Abs,PressDiff,Temperature,OP1,OP2,CO");
+		sprintf(HeaderLine, "Date (YYYY-MM-DD),Time (HH-MM-SS),Time_boot_ms,Lat,Lon,Alt,Temperature,CO");
+		mySensorData.println(HeaderLine);
 		mySensorData.close(); //close the file
 	}
 }

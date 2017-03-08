@@ -1,3 +1,20 @@
+Ver07b
+Modified to follow Alphasense calibration procedure from end of document. Ver07b subtracts the offset value from OP2 before multiplying by temperature factor. The temp factor is -0.1, so subtracting after generates a negative number of greater magnitude than ver)7a (which subtract prior to multiplication)
+
+Ver07a
+Modified to follow Alphasense calibration procedure.
+
+Ver07
+To address crashing during SD_Card write, removed all string variables. Data saved to character array variable before writing.
+
+Ver06
+Added timeout for GPS connection.
+'GPS_Timeout' is timeout value in (ms), set to -1 to force wait for GPS.
+'GPS_Found' is a bool flag for GPS presence.
+Added SD card presence sanity check, i.e. do not initialise card and create filename etc if SD card no present.
+Added relevant serial print messages for debugging.
+Removed breakpoints in visual studio project for clean code upload to Teensy from VS (shouldn't affect upload from Arduino).
+
 Ver05
 Fixed compile error in Arduino.
 Hex file included. This will provide the same Teensy system and component ID to every system, which in turn labels all log files the same. Ideally the system ID should be changed for each Teensy.
@@ -7,7 +24,8 @@ General code tidy, superfluous, historical, remarked code removed.
 Changes:
 1.
 GPS Time & Date acquired.
-Log file is named with 3 digit System ID, 'Log' and 2 digit Log File Number, nnnLogmm.csv	This allows easy use of multiple files. I tried using long filenames in the format YYYY-MM-DD_HH-MM-SS_Sys-ID.csv. Worked right up the point I realised we're limited to 8.3 file names!
+Log file is named with 3 digit System ID, 'Log' and 2 digit Log File Number, nnnLogmm.csv
+This allows easy use of multiple files. I tried using long filenames in the format YYYY-MM-DD_HH-MM-SS_Sys-ID.csv. Worked right up the point I realised we're limited to 8.3 file names!
 Log file now includes the date stamp and time stamp in the first two columns.
 
 2.
