@@ -1,3 +1,5 @@
+// ver08
+
 #include "libraries\checksum.h"
 #include "libraries\ardupilotmega\mavlink.h" // loads mavlink from common
 #include <ADC.h>
@@ -30,7 +32,7 @@ float pitch = 0;
 float yaw = 0;
 float rollspeed = 0;
 float pitchspeed = 0;
-float yawspeed = 0;
+float yawspeed = 0;2 mins....
 uint time_boot_ms;
 int lat = 0;
 int lon = 0;

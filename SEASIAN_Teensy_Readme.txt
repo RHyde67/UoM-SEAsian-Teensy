@@ -1,3 +1,7 @@
+Ver08
+Agreed calibratio procedure as per ver7b
+Additional debug messages (as added by PH) to send debug messages to serial monitor port. Not all currently active, see lines 172-186. 
+
 Ver07b
 Modified to follow Alphasense calibration procedure from end of document. Ver07b subtracts the offset value from OP2 before multiplying by temperature factor. The temp factor is -0.1, so subtracting after generates a negative number of greater magnitude than ver)7a (which subtract prior to multiplication)
 
